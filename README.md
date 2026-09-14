@@ -24,6 +24,7 @@ The result is a poll where the count is publicly auditable and the voters are no
 | State | Meaning |
 |-------|---------|
 | `roster` | Merkle tree of member commitments |
+| `members` | the same commitments as a set, so nobody enrols twice |
 | `spent` | nullifiers that have already been used |
 | `tally` | vote count per option |
 | `choices` | number of options on the ballot |
@@ -83,7 +84,7 @@ npm run compile
 npm test
 ```
 
-Nine tests across three groups: circuit logic, state transitions, and privacy. The privacy group asserts the properties the product actually claims — that no member secret reaches the ledger, that the published nullifier is not the published commitment, and that no commitment appears alongside the ballots.
+Ten tests across three groups: circuit logic, state transitions, and privacy. The privacy group asserts the properties the product actually claims — that no member secret reaches the ledger, that the published nullifier is not the published commitment, and that no commitment appears alongside the ballots.
 
 ## Run It
 
@@ -92,6 +93,15 @@ Against the bundled local devnet, which needs no faucet and no wallet extension:
 ```bash
 npm run setup
 npm run cli
+```
+
+The CLI is also scriptable, which is what CI and the demo use:
+
+```bash
+npm run cli -- enrol
+npm run cli -- vote 0
+npm run cli -- tally
+npm run cli -- demo      # enrol, vote, then read the tally
 ```
 
 Against Preprod:
