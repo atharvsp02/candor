@@ -201,7 +201,17 @@ async function main() {
       console.log(`  Nullifiers spent: ${state.spent.size()}\n`);
     };
 
-    const argv = process.argv.slice(2);
+    const argv: string[] = [];
+    const raw = process.argv.slice(2);
+    for (let i = 0; i < raw.length; i++) {
+      const token = raw[i];
+      if (!token.startsWith('-')) {
+        argv.push(token);
+        continue;
+      }
+      if (token === '--network' && raw[i + 1] !== undefined && !raw[i + 1].startsWith('-')) i++;
+    }
+
     if (argv.length > 0) {
       const [command, argument] = argv;
       switch (command) {
