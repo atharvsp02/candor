@@ -130,7 +130,10 @@ Candor starts as a primitive — anonymous one-member-one-ballot polling — and
 
 ## Screenshots
 
-| | |
-|---|---|
-| Compile output | `docs/compile.png` |
-| Deployed contract address | `docs/deploy.png` |
+**Compile — circuits and keys generated**
+
+![compile output](docs/compile.png)
+
+**Deploy — contract live with an address**
+
+![deploy output](docs/deploy.png)
