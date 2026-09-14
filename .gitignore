@@ -16,6 +16,7 @@ build/
 .env.production.local
 
 # Contract artifacts (managed/ is committed: Level 1 requires circuits + keys in the repo)
+contracts/managed/
 
 
 # Deployment info
@@ -58,3 +59,6 @@ temp/
 
 # Midnight wallet sync state (per-network serialized wallet state cache)
 .midnight-wallet-state/
+
+# Local devnet database
+midnight-level-db/
