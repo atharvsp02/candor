@@ -1,0 +1,80 @@
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+// Privacy model
+//
+// PUBLIC (on the ledger, readable by anyone):
+//   roster    - Merkle tree of member commitments
+//   spent     - nullifiers that have already been used
+//   tally     - vote count per option
+//   choices   - number of options in this poll
+//   enrolled  - number of members admitted
+//   cast      - number of ballots accepted
+//
+// PRIVATE (witnesses, never leave the voter's machine):
+//   memberSecret - the voter's secret key
+//   memberPath   - the voter's Merkle path, which identifies their leaf
+//
+// PROVED WITHOUT REVEALING:
+//   That the voter's commitment sits somewhere in the roster, without
+//   revealing which leaf it is, and that they have not voted before.
+//   The tally moves; the link between voter and ballot is never written.
+
+export ledger roster: MerkleTree<10, Bytes<32>>;
+export ledger spent: Set<Bytes<32>>;
+export ledger tally: Map<Uint<8>, Counter>;
+export ledger choices: Uint<8>;
+export ledger enrolled: Counter;
+export ledger cast: Counter;
+
+constructor(optionCount: Uint<8>) {
+  const count = disclose(optionCount);
+  assert(count >= 2, "a poll needs at least two options");
+  assert(count <= 8, "a poll supports at most eight options");
+  choices = count;
+  for (const i of 0 .. 8) {
+    if ((i as Uint<8>) < count) {
+      tally.insert(i as Uint<8>, default<Counter>);
+    }
+  }
+}
+
+witness memberSecret(): Bytes<32>;
+witness memberPath(): MerkleTreePath<10, Bytes<32>>;
+
+export circuit commitment(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "candor:member:v1"), sk]);
+}
+
+export circuit nullifier(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "candor:nullifier:v1"), sk]);
+}
+
+export circuit enroll(): Bytes<32> {
+  const leaf = disclose(commitment(memberSecret()));
+  assert(!roster.isFull(), "roster is full");
+  roster.insert(leaf);
+  enrolled.increment(1);
+  return leaf;
+}
+
+export circuit vote(choice: Uint<8>): [] {
+  const pick = disclose(choice);
+  assert(pick < choices, "choice is not on the ballot");
+
+  const sk = memberSecret();
+  const path = memberPath();
+  assert(path.leaf == commitment(sk), "path does not belong to this secret");
+  assert(
+    roster.checkRoot(disclose(merkleTreePathRoot<10, Bytes<32>>(path))),
+    "not enrolled in this poll"
+  );
+
+  const tag = disclose(nullifier(sk));
+  assert(!spent.member(tag), "this member has already voted");
+  spent.insert(tag);
+
+  tally.lookup(pick).increment(1);
+  cast.increment(1);
+}
