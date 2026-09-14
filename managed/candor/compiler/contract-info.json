@@ -148,7 +148,7 @@
       }
     },
     {
-      "name": "spent",
+      "name": "members",
       "index": 1,
       "exported": true,
       "storage": "Set",
@@ -158,8 +158,18 @@
       }
     },
     {
-      "name": "tally",
+      "name": "spent",
       "index": 2,
+      "exported": true,
+      "storage": "Set",
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "tally",
+      "index": 3,
       "exported": true,
       "storage": "Map",
       "key": {
@@ -172,7 +182,7 @@
     },
     {
       "name": "choices",
-      "index": 3,
+      "index": 4,
       "exported": true,
       "storage": "Cell",
       "type": {
@@ -182,13 +192,13 @@
     },
     {
       "name": "enrolled",
-      "index": 4,
+      "index": 5,
       "exported": true,
       "storage": "Counter"
     },
     {
       "name": "cast",
-      "index": 5,
+      "index": 6,
       "exported": true,
       "storage": "Counter"
     }

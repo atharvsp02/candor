@@ -6,6 +6,7 @@ import CompactStandardLibrary;
 //
 // PUBLIC (on the ledger, readable by anyone):
 //   roster    - Merkle tree of member commitments
+//   members   - the same commitments as a set, to reject duplicate enrolment
 //   spent     - nullifiers that have already been used
 //   tally     - vote count per option
 //   choices   - number of options in this poll
@@ -22,6 +23,7 @@ import CompactStandardLibrary;
 //   The tally moves; the link between voter and ballot is never written.
 
 export ledger roster: MerkleTree<10, Bytes<32>>;
+export ledger members: Set<Bytes<32>>;
 export ledger spent: Set<Bytes<32>>;
 export ledger tally: Map<Uint<8>, Counter>;
 export ledger choices: Uint<8>;
@@ -53,8 +55,10 @@ export circuit nullifier(sk: Bytes<32>): Bytes<32> {
 
 export circuit enroll(): Bytes<32> {
   const leaf = disclose(commitment(memberSecret()));
+  assert(!members.member(leaf), "this member is already enrolled");
   assert(!roster.isFull(), "roster is full");
   roster.insert(leaf);
+  members.insert(leaf);
   enrolled.increment(1);
   return leaf;
 }

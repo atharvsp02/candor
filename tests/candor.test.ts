@@ -68,6 +68,15 @@ describe('circuit logic', () => {
     expect(poll.ledger.roster.findPathForLeaf(leaf)).toBeDefined();
   });
 
+  it('admits a member once, however many times they ask', () => {
+    const poll = new Poll(2);
+    const alice = createPrivateState();
+    poll.enroll(alice);
+
+    expect(() => poll.enroll(alice)).toThrow(/already enrolled/);
+    expect(poll.ledger.enrolled).toBe(1n);
+  });
+
   it('refuses a ballot for an option that is not on it', () => {
     const poll = new Poll(2);
     const alice = createPrivateState();
