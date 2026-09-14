@@ -107,6 +107,7 @@ async function main() {
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
   const rl = createInterface({ input: stdin, output: stdout });
+  let stopWallet: () => Promise<void> = async () => {};
 
   // Check for deployment
   const deployment = getDeployment(network);
@@ -122,6 +123,9 @@ async function main() {
 
     console.log('  Connecting to wallet...');
     const walletCtx = await createWallet({ network, networkConfig, seed });
+    stopWallet = async () => {
+      try { await walletCtx.wallet.stop(); } catch {}
+    };
     const restoredCount = Object.values(walletCtx.restored).filter(Boolean).length;
     if (restoredCount > 0) {
       console.log(`  Restored ${restoredCount}/3 child wallets from .midnight-wallet-state — sync will resume from saved point.`);
@@ -290,8 +294,11 @@ async function main() {
     await walletCtx.wallet.stop();
   } catch (error) {
     console.error('\n❌ Error:', error instanceof Error ? error.message : error);
+    if (process.env.CANDOR_DEBUG) console.error(error);
+    process.exitCode = 1;
   } finally {
     rl.close();
+    await stopWallet();
   }
 }
 
