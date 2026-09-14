@@ -167,7 +167,65 @@ async function main() {
 
     console.log('  ✅ Connected!\n');
 
-    // Interactive CLI loop
+    const enrol = async () => {
+      console.log('  Proving and submitting (this may take 30-60 seconds)...');
+      const tx = await deployed.callTx.enroll();
+      console.log('\n  ✅ Enrolled. Your commitment is in the roster.');
+      console.log(`  Transaction ID: ${tx.public.txId}`);
+      console.log(`  Block height: ${tx.public.blockHeight}\n`);
+    };
+
+    const castBallot = async (option: bigint) => {
+      console.log(`  Proving and submitting a ballot for option ${option}...`);
+      const tx = await deployed.callTx.vote(option);
+      console.log('\n  ✅ Ballot accepted. The tally moved; your identity did not.');
+      console.log(`  Transaction ID: ${tx.public.txId}`);
+      console.log(`  Block height: ${tx.public.blockHeight}\n`);
+    };
+
+    const readTally = async () => {
+      const contractState = await providers.publicDataProvider.queryContractState(deployment.address);
+      if (!contractState) {
+        console.log('\n  No contract state found.\n');
+        return;
+      }
+      const state = Candor.ledger(contractState.data);
+      console.log(`\n  Enrolled: ${state.enrolled}   Ballots cast: ${state.cast}`);
+      for (let i = 0n; i < state.choices; i++) {
+        console.log(`    Option ${i}: ${state.tally.lookup(i).read()}`);
+      }
+      console.log(`  Nullifiers spent: ${state.spent.size()}\n`);
+    };
+
+    const argv = process.argv.slice(2);
+    if (argv.length > 0) {
+      const [command, argument] = argv;
+      switch (command) {
+        case 'enrol':
+        case 'enroll':
+          await enrol();
+          break;
+        case 'vote':
+          await castBallot(BigInt(argument ?? '0'));
+          break;
+        case 'tally':
+          await readTally();
+          break;
+        case 'demo':
+          await enrol();
+          await castBallot(BigInt(argument ?? '0'));
+          await readTally();
+          break;
+        default:
+          console.error(`  Unknown command "${command}". Use enrol, vote <option>, tally, or demo.\n`);
+          process.exitCode = 1;
+      }
+      await persistWalletState(network, walletCtx);
+      await walletCtx.wallet.stop();
+      rl.close();
+      return;
+    }
+
     let running = true;
     while (running) {
       console.log('─── Menu ───────────────────────────────────────────────────────');
@@ -181,12 +239,8 @@ async function main() {
 
       switch (choice.trim()) {
         case '1': {
-          console.log('\n  Proving and submitting (this may take 30-60 seconds)...');
           try {
-            const tx = await deployed.callTx.enroll();
-            console.log('\n  ✅ Enrolled. Your commitment is in the roster.');
-            console.log(`  Transaction ID: ${tx.public.txId}`);
-            console.log(`  Block height: ${tx.public.blockHeight}\n`);
+            await enrol();
           } catch (error) {
             console.error('\n  ❌ Failed:', error instanceof Error ? error.message : error);
           }
@@ -195,12 +249,8 @@ async function main() {
 
         case '2': {
           const answer = await rl.question('  Option number (0-based): ');
-          console.log('\n  Proving and submitting (this may take 30-60 seconds)...');
           try {
-            const tx = await deployed.callTx.vote(BigInt(answer.trim()));
-            console.log('\n  ✅ Ballot accepted. The tally moved; your identity did not.');
-            console.log(`  Transaction ID: ${tx.public.txId}`);
-            console.log(`  Block height: ${tx.public.blockHeight}\n`);
+            await castBallot(BigInt(answer.trim()));
           } catch (error) {
             console.error('\n  ❌ Failed:', error instanceof Error ? error.message : error);
           }
@@ -208,19 +258,8 @@ async function main() {
         }
 
         case '3': {
-          console.log('\n  Reading the ledger...');
           try {
-            const contractState = await providers.publicDataProvider.queryContractState(deployment.address);
-            if (contractState) {
-              const state = Candor.ledger(contractState.data);
-              console.log(`\n  Enrolled: ${state.enrolled}   Ballots cast: ${state.cast}`);
-              for (let i = 0n; i < state.choices; i++) {
-                console.log(`    Option ${i}: ${state.tally.lookup(i).read()}`);
-              }
-              console.log(`  Nullifiers spent: ${state.spent.size()}\n`);
-            } else {
-              console.log('\n  No contract state found.\n');
-            }
+            await readTally();
           } catch (error) {
             console.error('\n  ❌ Failed:', error instanceof Error ? error.message : error);
           }
