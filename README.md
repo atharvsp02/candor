@@ -4,10 +4,18 @@
 
 ## Contract Address
 
-| Network | Address |
-|---------|---------|
-| Preprod | `pending deploy` |
-| Preview | `not deployed` |
+| Network | Address | Deployed at |
+|---------|---------|-------------|
+| Preview | `b6b3a6862110bc33245c785e4658b58c5d964f3a662498bbba2e78034c6594fe` | block 861620 |
+| Preprod | not yet deployed | — |
+
+Verify it yourself against the public indexer:
+
+```bash
+curl -s -X POST https://indexer.preview.midnight.network/api/v4/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"{ contractAction(address: \"b6b3a6862110bc33245c785e4658b58c5d964f3a662498bbba2e78034c6594fe\") { __typename transaction { hash block { height } } } }"}'
+```
 
 ## What This Does
 
@@ -104,14 +112,21 @@ npm run cli -- tally
 npm run cli -- demo      # enrol, vote, then read the tally
 ```
 
-Against Preprod:
+Against a public testnet:
 
 ```bash
-npm run setup -- --network preprod
-npm run cli
+npm run address -- --network preview   # prints the address to fund
+npm run setup   -- --network preview
+npm run cli     -- tally
 ```
 
-The deploy pauses when the wallet needs funding; fund the printed address at the [Preprod faucet](https://midnight-tmnight-preprod.nethermind.dev/) and it continues. Set `CANDOR_OPTIONS` to change the number of options on the ballot (default 3).
+`npm run address` derives the funding address locally, so you can fill the wallet
+from the [faucet](https://midnight-tmnight-preview.nethermind.dev/) while the first
+sync is still running — a fresh wallet scans the whole chain and that takes a while.
+Preprod works the same way with `--network preprod`, but its chain is roughly three
+times longer, so the first sync costs correspondingly more.
+
+Set `CANDOR_OPTIONS` to change the number of options on the ballot (default 3).
 
 ## Project Layout
 
