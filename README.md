@@ -1,6 +1,8 @@
 # Candor
 
-> Verifiable anonymous polling on Midnight. One member, one ballot, enforced by a zero-knowledge proof instead of a promise.
+[![CI](https://github.com/atharvsp02/candor/actions/workflows/ci.yml/badge.svg)](https://github.com/atharvsp02/candor/actions/workflows/ci.yml)
+
+> Anonymous polling where the anonymity is proven, not promised. One member, one ballot, enforced by a zero-knowledge proof.
 
 ## Contract Address
 
@@ -9,7 +11,7 @@
 | Preview | `b6b3a6862110bc33245c785e4658b58c5d964f3a662498bbba2e78034c6594fe` | block 861620 |
 | Preprod | not yet deployed | — |
 
-Verify it yourself against the public indexer:
+Don't take my word for it — ask the public indexer:
 
 ```bash
 curl -s -X POST https://indexer.preview.midnight.network/api/v4/graphql \
@@ -17,13 +19,53 @@ curl -s -X POST https://indexer.preview.midnight.network/api/v4/graphql \
   -d '{"query":"{ contractAction(address: \"b6b3a6862110bc33245c785e4658b58c5d964f3a662498bbba2e78034c6594fe\") { __typename transaction { hash block { height } } } }"}'
 ```
 
-## What This Does
+It answers `ContractDeploy`, transaction `4914861a1a816e5394b6f3617081f4da7582c6e100fa6a614c3c22f7c0128b32`.
 
-Every "anonymous" survey you have ever filled in was anonymous because somebody told you it was. The vendor holds the responses, the admin holds the dashboard, and the only thing standing between your answer and your name is a privacy policy. People know this, so they answer the way they are supposed to, and the survey measures nothing.
+## The problem
 
-Candor removes the promise and replaces it with arithmetic. A poll is a deployed contract. Members enrol by publishing a commitment to a secret that never leaves their machine. To vote, a member proves in zero knowledge that their commitment sits somewhere in the roster and that they have not voted before — without revealing which member they are. The tally moves. The link between voter and ballot is never written down, so there is nothing for an administrator to leak, subpoena, or sell.
+Every "anonymous" survey you have ever filled in was anonymous because somebody told you it was. The vendor holds the responses. An administrator holds the dashboard. The only thing between your answer and your name is a policy document and the assumption that nobody will go looking.
 
-The result is a poll where the count is publicly auditable and the voters are not.
+Respondents understand this perfectly well, so they answer the way they are supposed to answer. The survey then measures what people are willing to say rather than what they think, and the organisation running it makes decisions on the difference.
+
+You cannot fix that with a stronger promise. The promise is the flaw.
+
+## What Candor does
+
+A poll is a deployed contract. Members enrol by publishing a commitment to a secret that never leaves their machine. To vote, a member proves — in zero knowledge — two things at once:
+
+1. their commitment is somewhere in the roster, and
+2. they have not voted in this poll before.
+
+Neither proof reveals *which* member they are. The tally moves. The link between a voter and their ballot is never written down, so there is nothing for an operator to leak, lose, subpoena, or sell.
+
+The count is publicly auditable. The voters are not.
+
+## How it works
+
+```mermaid
+flowchart LR
+  subgraph priv["Voter's machine — never transmitted"]
+    sk["member secret"]
+    mp["Merkle path"]
+  end
+  subgraph zk["Zero-knowledge circuit"]
+    pf["prove: my leaf is in the roster<br/>prove: my nullifier is unused"]
+  end
+  subgraph pub["Ledger — visible to everyone"]
+    rt["roster root"]
+    sp["spent nullifiers"]
+    tl["tally"]
+  end
+  sk --> pf
+  mp --> pf
+  pf -->|"discloses only: root, nullifier, choice"| pub
+```
+
+**Enrolling** publishes `commitment = hash("candor:member:v1", secret)` into a Merkle tree. This is a public act — the roster is meant to be inspectable, so anyone can confirm who was entitled to vote.
+
+**Voting** proves the secret behind *some* leaf of that tree, and spends `nullifier = hash("candor:nullifier:v1", secret)`. The nullifier is stable for a given member, so a second ballot is rejected. It shares no preimage with the commitment, so it cannot be traced back to the leaf it came from.
+
+The anonymity set is every enrolled member.
 
 ## Privacy Model
 
@@ -45,19 +87,60 @@ The result is a poll where the count is publicly auditable and the voters are no
 | `memberSecret` | the voter's secret key |
 | `memberPath` | the Merkle path that identifies the voter's leaf |
 
-**PROVED WITHOUT REVEALING** — a voter proves that their commitment is somewhere in the roster, and that this is their first ballot, without revealing which leaf is theirs.
+**PROVED WITHOUT REVEALING** — that the voter's commitment sits somewhere in the roster, and that this is their first ballot, without revealing which leaf is theirs.
+
+### What an observer actually sees
+
+| Observable | Hidden |
+|---|---|
+| A ballot was cast | Who cast it |
+| Which option it was for | Which of the enrolled members chose it |
+| A 32-byte nullifier | Any link from that nullifier to a commitment |
+| The full roster of commitments | Which commitment belongs to which person |
+
+## Design notes
 
 ### Why a Merkle tree and not a set
 
-The first version of this contract kept the roster in a `Set` and checked `roster.member(commitment)`. The compiler refused to build it without an explicit `disclose()`, which was the correct objection: looking a member up by their own commitment publishes that commitment, so an observer watching the transaction learns exactly who is voting. The anonymity would have been cosmetic.
+The first version kept the roster in a `Set` and checked `roster.member(commitment)`. The compiler refused to build it without an explicit `disclose()`, and it was right to: looking a member up by their own commitment publishes that commitment, so anyone watching the transaction learns exactly who is voting. The anonymity would have been decorative.
 
-A Merkle tree fixes this. The voter keeps the path private and discloses only the computed root, which is already public. The proof shows that *some* leaf in the tree hashes up to that root, and reveals nothing about which one. The anonymity set is every enrolled member.
+A Merkle tree removes the need to name yourself. The voter keeps the path private and discloses only the computed root, which is already public information. The proof shows that *some* leaf hashes up to that root and says nothing about which one.
 
-### What an observer can and cannot see
+This is the one place in the contract where `disclose()` carries real weight, and it is disclosing a value that was already public. That is the distinction worth internalising: `disclose()` is not a switch that makes data public, it is a declaration that you have thought about a value crossing into a public domain and consider it safe.
 
-An observer sees: that a ballot was cast, which option it was for, and a 32-byte nullifier.
+### Why duplicate enrolment is blocked
 
-An observer cannot see: which member cast it. The nullifier is `hash("candor:nullifier:v1", secret)` — it is stable per member, so a second ballot is rejected, but it shares no preimage with the published commitment `hash("candor:member:v1", secret)`. Linking the two requires inverting the hash.
+A member could originally enrol the same commitment repeatedly. The nullifier still held one-member-one-ballot, so the tally stayed honest — but `enrolled` overstated the roster, which made the anonymity set look larger than it really was. Since the commitment is already public the moment it enters the tree, keeping a parallel `Set` to reject duplicates costs nothing in privacy and keeps the published numbers truthful.
+
+### One poll per deployment
+
+Each poll is its own contract, so nullifiers never need a round counter and there is no administrator who can reopen or rewrite a closed poll. Deploying is cheap; shared mutable state is not.
+
+## The contract
+
+```compact
+export circuit vote(choice: Uint<8>): [] {
+  const pick = disclose(choice);
+  assert(pick < choices, "choice is not on the ballot");
+
+  const sk = memberSecret();
+  const path = memberPath();
+  assert(path.leaf == commitment(sk), "path does not belong to this secret");
+  assert(
+    roster.checkRoot(disclose(merkleTreePathRoot<10, Bytes<32>>(path))),
+    "not enrolled in this poll"
+  );
+
+  const tag = disclose(nullifier(sk));
+  assert(!spent.member(tag), "this member has already voted");
+  spent.insert(tag);
+
+  tally.lookup(pick).increment(1);
+  cast.increment(1);
+}
+```
+
+Full source: [`contracts/candor.compact`](contracts/candor.compact).
 
 ## Tech Stack
 
@@ -65,26 +148,28 @@ Midnight · Compact `0.31.1` · `@midnight-ntwrk/compact-runtime` · Midnight.js
 
 ## Prerequisites
 
-- Node.js 22+
-- Docker (runs the proof server and the local devnet)
-- The Compact toolchain:
+- **Node.js 22+**
+- **Docker** — runs the proof server and the bundled local devnet
+- **The Compact toolchain:**
   ```bash
   curl --proto '=https' --tlsv1.2 -LsSf \
     https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
   compact update 0.31.1
   ```
-  Pin `0.31.1`. The installer's default is newer than the toolchain this project expects.
+
+  Pin `0.31.1` explicitly. The installer defaults to the newest compiler, which is
+  ahead of what the surrounding tooling expects.
 
 ## Setup
 
 ```bash
-git clone <this repo>
+git clone https://github.com/atharvsp02/candor.git
 cd candor
 npm install
 npm run compile
 ```
 
-`npm run compile` writes the circuits and proving/verifying keys to `managed/candor/`.
+`npm run compile` writes the circuits and the proving/verifying keys into `managed/candor/`.
 
 ## Run Tests
 
@@ -92,18 +177,24 @@ npm run compile
 npm test
 ```
 
-Ten tests across three groups: circuit logic, state transitions, and privacy. The privacy group asserts the properties the product actually claims — that no member secret reaches the ledger, that the published nullifier is not the published commitment, and that no commitment appears alongside the ballots.
+Ten tests in three groups:
+
+- **circuit logic** — a poll needs at least two options, enrolling stores the commitment it returns, a member is admitted only once, a ballot off the end of the list is refused
+- **state transitions** — the tally moves only for the option chosen, one nullifier is spent per ballot, an unenrolled secret is turned away
+- **privacy** — no member secret reaches the ledger, the published nullifier is not the published commitment, and no commitment appears alongside the ballots
+
+The privacy group is the point. It asserts the properties this product actually claims, so a change that quietly breaks anonymity fails the suite rather than shipping.
 
 ## Run It
 
-Against the bundled local devnet, which needs no faucet and no wallet extension:
+Against the bundled local devnet — no faucet, no wallet extension, no waiting:
 
 ```bash
 npm run setup
 npm run cli
 ```
 
-The CLI is also scriptable, which is what CI and the demo use:
+The CLI is scriptable, which is what the demo uses:
 
 ```bash
 npm run cli -- enrol
@@ -120,11 +211,10 @@ npm run setup   -- --network preview
 npm run cli     -- tally
 ```
 
-`npm run address` derives the funding address locally, so you can fill the wallet
-from the [faucet](https://midnight-tmnight-preview.nethermind.dev/) while the first
-sync is still running — a fresh wallet scans the whole chain and that takes a while.
-Preprod works the same way with `--network preprod`, but its chain is roughly three
-times longer, so the first sync costs correspondingly more.
+`npm run address` derives the funding address locally, so you can fill the wallet from
+the [faucet](https://midnight-tmnight-preview.nethermind.dev/) while the first sync is
+still running. A fresh wallet scans the chain from the start and that takes a while —
+Preprod's chain is roughly three times longer than Preview's, so budget accordingly.
 
 Set `CANDOR_OPTIONS` to change the number of options on the ballot (default 3).
 
@@ -132,16 +222,24 @@ Set `CANDOR_OPTIONS` to change the number of options on the ballot (default 3).
 
 ```
 contracts/candor.compact    the contract
-managed/candor/             compiled circuits and keys
-src/witnesses.ts            private state and witness implementations
+managed/candor/             compiled circuits, proving and verifying keys
+src/witnesses.ts            private state and the witness implementations
 src/deploy.ts               deploy to local devnet, preview, or preprod
 src/cli.ts                  enrol, vote, read the tally
+src/address.ts              derive the funding address without syncing
 tests/candor.test.ts        the test suite
+.github/workflows/ci.yml    compile, typecheck, test on every push
 ```
 
 ## Initial Idea
 
-Candor starts as a primitive — anonymous one-member-one-ballot polling — and grows into the product that primitive makes possible: honest internal feedback for organisations that currently cannot get it. Employee pulse surveys, DAO signalling votes, course feedback, post-incident retrospectives. All of these are places where the answer people give and the answer people hold differ, and they differ because respondents correctly assume the channel is not really anonymous. Midnight is the only place this is fixable at the infrastructure layer rather than the policy layer: the roster proves the respondent was entitled to answer, the nullifier proves they answered once, and neither the operator nor the chain ever learns who said what. The next step is a hosted frontend where creating a poll and sharing a link takes under a minute, so the cryptography is something users benefit from rather than something they have to understand.
+Candor is a primitive with a product attached. The primitive is anonymous, sybil-resistant polling: prove you belong to a group, vote once, reveal nothing else. The product is honest internal feedback for organisations that currently cannot buy it at any price.
+
+Employee pulse surveys, DAO signalling votes, course evaluations, post-incident retrospectives, board confidence checks — all of them are places where the answer people give and the answer people hold are different, and they are different for one structural reason: the respondent correctly assumes the channel is not really anonymous. Every incumbent tool in this space asks you to trust an operator who is technically capable of deanonymising you, and who is often employed by the person asking the question.
+
+Midnight is the only place this is fixable at the infrastructure layer instead of the policy layer. The roster proves the respondent was entitled to answer. The nullifier proves they answered once. The proof reveals neither. There is no privileged view, because there is no stored link to be privileged about — not for the operator, not for me, not for anyone who later buys the company or serves it a warrant.
+
+The next step is to make the cryptography disappear. Creating a poll and sharing a link should take under a minute, and a respondent should never learn the words "Merkle" or "nullifier" — they should simply believe the anonymity, because for the first time it is worth believing.
 
 ## Screenshots
 
@@ -149,6 +247,6 @@ Candor starts as a primitive — anonymous one-member-one-ballot polling — and
 
 ![compile output](docs/compile.png)
 
-**Deploy — contract live with an address**
+**Deploy — contract live on Preview with an address**
 
 ![deploy output](docs/deploy.png)
