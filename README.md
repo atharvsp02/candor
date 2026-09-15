@@ -89,6 +89,39 @@ The anonymity set is every enrolled member.
 
 **PROVED WITHOUT REVEALING** — that the voter's commitment sits somewhere in the roster, and that this is their first ballot, without revealing which leaf is theirs.
 
+## Privacy Claim
+
+**Claim:** an observer with full access to the chain, the indexer, and the contract source can determine
+that a ballot was cast and which option it chose, but cannot determine which enrolled member cast it.
+
+**What is published, and why it does not identify you**
+
+| Value | Published | Why it is safe |
+|---|---|---|
+| Commitment `hash("candor:member:v1", secret)` | at enrolment | It is a one-way hash, and enrolment is a separate transaction from voting |
+| Nullifier `hash("candor:nullifier:v1", secret)` | at voting | Shares no preimage with the commitment; linking the two requires inverting the hash |
+| Merkle root of the roster | at voting | Already public — it is the tree every member is in |
+| The chosen option | at voting | The response is meant to be counted; the respondent is not |
+
+**What is never transmitted**
+
+The member secret and the Merkle path stay in the voter's browser. The path is the value that would
+identify which leaf is theirs, which is exactly why it is a witness and not an argument.
+
+**Where the claim would break, and how the contract prevents it**
+
+An earlier version kept the roster in a `Set` and checked `roster.member(commitment)`. That publishes
+the voter's own commitment at vote time, which links voter to ballot directly. The compiler refused to
+compile it without an explicit `disclose()`, and the fix was the Merkle tree: the voter discloses the
+computed root, which is already public, and proves membership without naming a leaf.
+
+**How to verify it yourself**
+
+Connect a wallet in the live demo. The "What the chain learns" panel reads your commitment and
+nullifier back from the ledger and shows the size of the anonymity set they are hidden within. Every
+value shown is fetched from the chain; the two redacted rows are redacted because there is nothing on
+chain to fetch.
+
 ### What an observer actually sees
 
 | Observable | Hidden |
