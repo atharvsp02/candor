@@ -2,6 +2,8 @@ import type { Tally } from '../hooks/useMidnight';
 
 type Props = {
   connected: boolean;
+  hasPoll: boolean;
+  onCreatePoll: () => void;
   tally: Tally | null;
   busy: string | null;
   notice: string | null;
@@ -11,8 +13,31 @@ type Props = {
 
 const LABELS = ['Yes', 'No', 'Abstain'];
 
-export function CircuitCall({ connected, tally, busy, notice, onEnrol, onVote }: Props) {
+export function CircuitCall({ connected, hasPoll, tally, busy, notice, onCreatePoll, onEnrol, onVote }: Props) {
   const total = tally ? tally.counts.reduce((sum, n) => sum + n, 0n) : 0n;
+
+  if (!hasPoll) {
+    return (
+      <section className="panel">
+        <header className="panel-head">
+          <h2>No poll yet</h2>
+          <p>A poll is a contract of its own. Deploy one through your wallet to begin.</p>
+        </header>
+        <div className="actions">
+          <button onClick={onCreatePoll} disabled={!connected || busy !== null}>
+            {busy === 'Poll creation' ? 'Deploying…' : 'Create a poll'}
+          </button>
+        </div>
+        {busy === 'Poll creation' && (
+          <p className="proving">
+            <span className="spinner" />
+            Deploying through your wallet. This takes a minute.
+          </p>
+        )}
+        {notice && !busy && <p className="notice">{notice}</p>}
+      </section>
+    );
+  }
 
   return (
     <section className="panel">

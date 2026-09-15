@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import semver from 'semver';
-import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
@@ -14,9 +14,9 @@ import { browserPrivateStateProvider, loadOrCreateSecret } from '../browser-priv
 
 const COMPATIBLE_WALLET_API = '4.x';
 const PRIVATE_STATE_ID = 'candorPrivateState';
+const OPTION_COUNT = 3n;
 
 const NETWORK_ID = (import.meta.env.VITE_NETWORK_ID ?? 'preprod') as NetworkId;
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS ?? '';
 
 export type Tally = {
   readonly enrolled: bigint;
@@ -25,11 +25,23 @@ export type Tally = {
   readonly spent: bigint;
 };
 
+/** What the chain can see about you, and what it cannot. Drives the privacy panel. */
+export type PrivacyFacts = {
+  readonly commitment: string;
+  readonly nullifier: string;
+  readonly enrolled: boolean;
+  readonly voted: boolean;
+  readonly anonymitySet: bigint;
+};
+
 export type Status =
   | { kind: 'disconnected' }
   | { kind: 'connecting' }
   | { kind: 'connected'; address: string }
   | { kind: 'error'; message: string };
+
+const hex = (bytes: Uint8Array) =>
+  Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
 const findWallet = (): InitialAPI | undefined => {
   const injected = (window as unknown as { midnight?: Record<string, unknown> }).midnight;
@@ -52,27 +64,93 @@ const readTally = (state: Ledger): Tally => ({
 
 export const useMidnight = () => {
   const [status, setStatus] = useState<Status>({ kind: 'disconnected' });
+  const [contractAddress, setContractAddress] = useState<string>(
+    import.meta.env.VITE_CONTRACT_ADDRESS ?? '',
+  );
   const [tally, setTally] = useState<Tally | null>(null);
+  const [privacy, setPrivacy] = useState<PrivacyFacts | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const deployed = useRef<any>(null);
+
+  const providers = useRef<any>(null);
+  const contract = useRef<any>(null);
+  const secret = useRef<Uint8Array | null>(null);
   const publicData = useRef<any>(null);
 
-  const refresh = useCallback(async () => {
-    if (!publicData.current || !CONTRACT_ADDRESS) return;
-    const state = await publicData.current.queryContractState(CONTRACT_ADDRESS);
-    if (state) setTally(readTally(ledger(state.data)));
+  const readChain = useCallback(async (address: string) => {
+    if (!publicData.current || !address) return;
+    const state = await publicData.current.queryContractState(address);
+    if (!state) return;
+    const view = ledger(state.data);
+    setTally(readTally(view));
+
+    if (secret.current) {
+      const commitment = pureCircuits.commitment(secret.current);
+      const nullifier = pureCircuits.nullifier(secret.current);
+      setPrivacy({
+        commitment: hex(commitment),
+        nullifier: hex(nullifier),
+        enrolled: view.roster.findPathForLeaf(commitment) !== undefined,
+        voted: view.spent.member(nullifier),
+        anonymitySet: view.enrolled,
+      });
+    }
   }, []);
 
   useEffect(() => {
-    if (!CONTRACT_ADDRESS) return;
     setNetworkId(NETWORK_ID);
     publicData.current = indexerPublicDataProvider(
       import.meta.env.VITE_INDEXER_URI ?? `https://indexer.${NETWORK_ID}.midnight.network/api/v4/graphql`,
       import.meta.env.VITE_INDEXER_WS_URI ?? `wss://indexer.${NETWORK_ID}.midnight.network/api/v4/graphql/ws`,
     );
-    void refresh();
-  }, [refresh]);
+    if (contractAddress) void readChain(contractAddress);
+  }, [contractAddress, readChain]);
+
+  const buildProviders = useCallback(async (api: ConnectedAPI) => {
+    const config = await api.getConfiguration();
+    const shielded = await api.getShieldedAddresses();
+    const zkConfigProvider = new FetchZkConfigProvider(window.location.origin, fetch.bind(window));
+
+    return {
+      privateStateProvider: browserPrivateStateProvider(),
+      zkConfigProvider,
+      proofProvider: httpClientProofProvider(config.proverServerUri!, zkConfigProvider),
+      publicDataProvider: indexerPublicDataProvider(config.indexerUri, config.indexerWsUri),
+      walletProvider: {
+        getCoinPublicKey: () => shielded.shieldedCoinPublicKey,
+        getEncryptionPublicKey: () => shielded.shieldedEncryptionPublicKey,
+        balanceTx: async (tx: any) => {
+          const balanced = await api.balanceUnsealedTransaction(toHex(tx.serialize()));
+          return Transaction.deserialize('signature', 'proof', 'binding', fromHex(balanced.tx));
+        },
+      },
+      midnightProvider: {
+        submitTx: async (tx: any) => {
+          await api.submitTransaction(toHex(tx.serialize()));
+          return tx.identifiers()[0];
+        },
+      },
+    };
+  }, []);
+
+  const compiled = useCallback(() => {
+    const sk = secret.current!;
+    const witnesses = {
+      memberSecret: ({ privateState }: any) => [privateState, privateState.secret],
+      memberPath: ({ ledger: chain, privateState }: any) => {
+        const leaf = pureCircuits.commitment(privateState.secret);
+        const path = chain.roster.findPathForLeaf(leaf);
+        if (path === undefined) throw new Error('This browser is not enrolled in the poll yet.');
+        return [privateState, path];
+      },
+    };
+    void sk;
+    const CC = CompiledContract as any;
+    return CC.withCompiledFileAssets(
+      CC.withWitnesses(CompiledContract.make('candor', Contract), witnesses),
+      '',
+    );
+  }, []);
 
   const connect = useCallback(async () => {
     setStatus({ kind: 'connecting' });
@@ -80,79 +158,43 @@ export const useMidnight = () => {
     try {
       const wallet = findWallet();
       if (!wallet) {
-        throw new Error('No compatible Lace wallet found. Install the Midnight Lace extension and reload.');
+        throw new Error('No compatible Midnight wallet found. Install Lace Midnight Preview and reload.');
       }
 
       let api: ConnectedAPI;
       try {
         api = await wallet.connect(NETWORK_ID);
       } catch {
-        throw new Error('Connection was rejected in Lace.');
+        throw new Error('Lace refused the connection. Approve it in the extension and try again.');
       }
 
-      const config = await api.getConfiguration();
-      const shielded = await api.getShieldedAddresses();
-
       setNetworkId(NETWORK_ID);
-      const zkConfigProvider = new FetchZkConfigProvider(window.location.origin, fetch.bind(window));
-      const providers = {
-        privateStateProvider: browserPrivateStateProvider(),
-        zkConfigProvider,
-        proofProvider: httpClientProofProvider(config.proverServerUri!, zkConfigProvider),
-        publicDataProvider: indexerPublicDataProvider(config.indexerUri, config.indexerWsUri),
-        walletProvider: {
-          getCoinPublicKey: () => shielded.shieldedCoinPublicKey,
-          getEncryptionPublicKey: () => shielded.shieldedEncryptionPublicKey,
-          balanceTx: async (tx: any) => {
-            const balanced = await api.balanceUnsealedTransaction(toHex(tx.serialize()));
-            return Transaction.deserialize('signature', 'proof', 'binding', fromHex(balanced.tx));
-          },
-        },
-        midnightProvider: {
-          submitTx: async (tx: any) => {
-            await api.submitTransaction(toHex(tx.serialize()));
-            return tx.identifiers()[0];
-          },
-        },
-      };
+      providers.current = await buildProviders(api);
+      publicData.current = providers.current.publicDataProvider;
+      secret.current = loadOrCreateSecret();
 
-      publicData.current = providers.publicDataProvider;
+      if (contractAddress) {
+        contract.current = await findDeployedContract(providers.current, {
+          compiledContract: compiled(),
+          contractAddress,
+          privateStateId: PRIVATE_STATE_ID,
+          initialPrivateState: { secret: secret.current },
+        });
+      }
 
-      const secret = loadOrCreateSecret();
-      const witnesses = {
-        memberSecret: ({ privateState }: any) => [privateState, privateState.secret],
-        memberPath: ({ ledger: chain, privateState }: any) => {
-          const leaf = pureCircuits.commitment(privateState.secret);
-          const path = chain.roster.findPathForLeaf(leaf);
-          if (path === undefined) throw new Error('This browser is not enrolled in the poll yet.');
-          return [privateState, path];
-        },
-      };
-
-      const CC = CompiledContract as any;
-      const compiled = CC.withCompiledFileAssets(
-        CC.withWitnesses(CompiledContract.make('candor', Contract), witnesses),
-        '',
-      );
-
-      deployed.current = await findDeployedContract(providers as any, {
-        compiledContract: compiled,
-        contractAddress: CONTRACT_ADDRESS,
-        privateStateId: PRIVATE_STATE_ID,
-        initialPrivateState: { secret },
-      });
-
-      const addresses = await api.getShieldedAddresses();
-      setStatus({ kind: 'connected', address: addresses.shieldedCoinPublicKey.toString() });
-      await refresh();
+      const shielded = await api.getShieldedAddresses();
+      setStatus({ kind: 'connected', address: shielded.shieldedCoinPublicKey.toString() });
+      if (contractAddress) await readChain(contractAddress);
     } catch (error) {
       setStatus({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
     }
-  }, [refresh]);
+  }, [buildProviders, compiled, contractAddress, readChain]);
 
   const disconnect = useCallback(() => {
-    deployed.current = null;
+    contract.current = null;
+    providers.current = null;
     setStatus({ kind: 'disconnected' });
+    setPrivacy(null);
     setNotice(null);
   }, []);
 
@@ -162,7 +204,7 @@ export const useMidnight = () => {
       setNotice(null);
       try {
         await action();
-        await refresh();
+        if (contractAddress) await readChain(contractAddress);
         setNotice(`${label} confirmed on chain.`);
       } catch (error) {
         setNotice(error instanceof Error ? error.message : String(error));
@@ -170,26 +212,47 @@ export const useMidnight = () => {
         setBusy(null);
       }
     },
-    [refresh],
+    [contractAddress, readChain],
   );
 
-  const enrol = useCallback(() => run('Enrolment', () => deployed.current.callTx.enroll()), [run]);
+  const createPoll = useCallback(
+    () =>
+      run('Poll creation', async () => {
+        const deployedContract = await deployContract(providers.current, {
+          compiledContract: compiled(),
+          args: [OPTION_COUNT],
+          privateStateId: PRIVATE_STATE_ID,
+          initialPrivateState: { secret: secret.current! },
+        } as any);
+        contract.current = deployedContract;
+        const address = (deployedContract as any).deployTxData.public.contractAddress;
+        setContractAddress(address);
+        await readChain(address);
+      }),
+    [compiled, readChain, run],
+  );
+
+  const enrol = useCallback(() => run('Enrolment', () => contract.current.callTx.enroll()), [run]);
+
   const vote = useCallback(
-    (option: number) => run(`Ballot for option ${option}`, () => deployed.current.callTx.vote(BigInt(option))),
+    (option: number) =>
+      run(`Ballot for option ${option}`, () => contract.current.callTx.vote(BigInt(option))),
     [run],
   );
 
   return {
     status,
     tally,
+    privacy,
     busy,
     notice,
+    contractAddress,
+    networkId: NETWORK_ID,
     connect,
     disconnect,
+    createPoll,
     enrol,
     vote,
-    refresh,
-    contractAddress: CONTRACT_ADDRESS,
-    networkId: NETWORK_ID,
+    refresh: () => readChain(contractAddress),
   };
 };

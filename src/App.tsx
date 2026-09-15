@@ -1,5 +1,6 @@
 import { WalletConnect } from './components/WalletConnect';
 import { CircuitCall } from './components/CircuitCall';
+import { PrivacyProof } from './components/PrivacyProof';
 import { useMidnight } from './hooks/useMidnight';
 import './App.css';
 
@@ -24,6 +25,8 @@ export default function App() {
 
       <CircuitCall
         connected={connected}
+        hasPoll={Boolean(m.contractAddress)}
+        onCreatePoll={m.createPoll}
         tally={m.tally}
         busy={m.busy}
         notice={m.notice}
@@ -31,29 +34,8 @@ export default function App() {
         onVote={m.vote}
       />
 
-      <section className="explain">
-        <h2>What the chain learns</h2>
-        <div className="grid">
-          <div>
-            <h3>Public</h3>
-            <ul>
-              <li>That a ballot was cast</li>
-              <li>Which option it was for</li>
-              <li>A 32-byte nullifier</li>
-              <li>The roster of member commitments</li>
-            </ul>
-          </div>
-          <div>
-            <h3>Never leaves your browser</h3>
-            <ul>
-              <li>Your member secret</li>
-              <li>Your Merkle path</li>
-              <li>Which roster entry is yours</li>
-              <li>Which ballot you cast</li>
-            </ul>
-          </div>
-        </div>
-      </section>
+      <PrivacyProof privacy={m.privacy} />
+
 
       <footer className="colophon">
         <span>Contract</span>
