@@ -195,3 +195,18 @@ button.ghost:hover:not(:disabled) { border-color: var(--accent-dim); }
   .masthead { flex-direction: column; }
   .wallet { width: 100%; }
 }
+
+.share {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  background: #11151b;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  flex-wrap: wrap;
+}
+
+.share span { font-size: 12px; color: var(--dim); font-weight: 600; }
+.share code { flex: 1; min-width: 200px; color: var(--dim); word-break: break-all; }

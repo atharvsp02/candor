@@ -26,6 +26,7 @@ export default function App() {
       <CircuitCall
         connected={connected}
         hasPoll={Boolean(m.contractAddress)}
+        shareUrl={m.shareUrl}
         onCreatePoll={m.createPoll}
         tally={m.tally}
         busy={m.busy}

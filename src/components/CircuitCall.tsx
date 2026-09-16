@@ -3,6 +3,7 @@ import type { Tally } from '../hooks/useMidnight';
 type Props = {
   connected: boolean;
   hasPoll: boolean;
+  shareUrl: string;
   onCreatePoll: () => void;
   tally: Tally | null;
   busy: string | null;
@@ -13,7 +14,7 @@ type Props = {
 
 const LABELS = ['Yes', 'No', 'Abstain'];
 
-export function CircuitCall({ connected, hasPoll, tally, busy, notice, onCreatePoll, onEnrol, onVote }: Props) {
+export function CircuitCall({ connected, hasPoll, shareUrl, tally, busy, notice, onCreatePoll, onEnrol, onVote }: Props) {
   const total = tally ? tally.counts.reduce((sum, n) => sum + n, 0n) : 0n;
 
   if (!hasPoll) {
@@ -45,6 +46,14 @@ export function CircuitCall({ connected, hasPoll, tally, busy, notice, onCreateP
         <h2>The ballot</h2>
         <p>Enrol once, then vote once. The chain proves both without learning who you are.</p>
       </header>
+
+      <div className="share">
+        <span>Share this poll</span>
+        <code>{shareUrl}</code>
+        <button className="ghost" onClick={() => void navigator.clipboard.writeText(shareUrl)}>
+          Copy
+        </button>
+      </div>
 
       <div className="actions">
         <button onClick={onEnrol} disabled={!connected || busy !== null}>

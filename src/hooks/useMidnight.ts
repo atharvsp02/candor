@@ -18,6 +18,16 @@ const OPTION_COUNT = 3n;
 
 const NETWORK_ID = (import.meta.env.VITE_NETWORK_ID ?? 'preprod') as NetworkId;
 
+/** A poll is one contract, so its address is the share link. */
+const pollFromUrl = (): string =>
+  new URLSearchParams(window.location.search).get('poll') ?? import.meta.env.VITE_CONTRACT_ADDRESS ?? '';
+
+const putPollInUrl = (address: string): void => {
+  const url = new URL(window.location.href);
+  url.searchParams.set('poll', address);
+  window.history.replaceState({}, '', url);
+};
+
 export type Tally = {
   readonly enrolled: bigint;
   readonly cast: bigint;
@@ -64,9 +74,7 @@ const readTally = (state: Ledger): Tally => ({
 
 export const useMidnight = () => {
   const [status, setStatus] = useState<Status>({ kind: 'disconnected' });
-  const [contractAddress, setContractAddress] = useState<string>(
-    import.meta.env.VITE_CONTRACT_ADDRESS ?? '',
-  );
+  const [contractAddress, setContractAddress] = useState<string>(pollFromUrl);
   const [tally, setTally] = useState<Tally | null>(null);
   const [privacy, setPrivacy] = useState<PrivacyFacts | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -158,14 +166,14 @@ export const useMidnight = () => {
     try {
       const wallet = findWallet();
       if (!wallet) {
-        throw new Error('No compatible Midnight wallet found. Install Lace Midnight Preview and reload.');
+        throw new Error('No compatible Midnight wallet found. Install the Lace extension, enable Midnight, and reload.');
       }
 
       let api: ConnectedAPI;
       try {
         api = await wallet.connect(NETWORK_ID);
       } catch {
-        throw new Error('Lace refused the connection. Approve it in the extension and try again.');
+        throw new Error('The wallet refused the connection. Approve it in the extension and try again.');
       }
 
       setNetworkId(NETWORK_ID);
@@ -227,6 +235,7 @@ export const useMidnight = () => {
         contract.current = deployedContract;
         const address = (deployedContract as any).deployTxData.public.contractAddress;
         setContractAddress(address);
+        putPollInUrl(address);
         await readChain(address);
       }),
     [compiled, readChain, run],
@@ -247,6 +256,7 @@ export const useMidnight = () => {
     busy,
     notice,
     contractAddress,
+    shareUrl: contractAddress ? `${window.location.origin}${window.location.pathname}?poll=${contractAddress}` : '',
     networkId: NETWORK_ID,
     connect,
     disconnect,
