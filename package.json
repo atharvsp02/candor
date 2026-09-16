@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "compile": "compact compile contracts/candor.compact managed/candor",
-    "build": "npm run ui:assets && tsc --noEmit && vite build && cp -r managed/candor/keys dist/keys && cp -r managed/candor/zkir dist/zkir",
+    "build": "npm run ui:assets && tsc --noEmit && vite build",
     "setup": "npx tsx src/setup.ts",
     "deploy": "npx tsx src/deploy.ts",
     "cli": "npx tsx src/cli.ts",
