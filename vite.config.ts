@@ -4,6 +4,9 @@ import wasm from 'vite-plugin-wasm';
 
 export default defineConfig({
   cacheDir: './.vite',
+  define: {
+    global: 'globalThis',
+  },
   build: {
     target: 'esnext',
     rollupOptions: {
@@ -37,6 +40,7 @@ export default defineConfig({
     },
   ],
   optimizeDeps: {
+    include: ['buffer'],
     esbuildOptions: {
       target: 'esnext',
       supported: { 'top-level-await': true },
