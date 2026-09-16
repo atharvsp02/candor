@@ -8,18 +8,20 @@
 
 | Network | Address | Deployed at |
 |---------|---------|-------------|
+| **Preprod** | `ec565faac3103ff42017cebd3cc2510407b2068aa164ee54349ed7f0305e9e29` | block 2573777 |
 | Preview | `b6b3a6862110bc33245c785e4658b58c5d964f3a662498bbba2e78034c6594fe` | block 861620 |
-| Preprod | not yet deployed | — |
 
 Don't take my word for it — ask the public indexer:
 
 ```bash
-curl -s -X POST https://indexer.preview.midnight.network/api/v4/graphql \
+curl -s -X POST https://indexer.preprod.midnight.network/api/v4/graphql \
   -H 'Content-Type: application/json' \
-  -d '{"query":"{ contractAction(address: \"b6b3a6862110bc33245c785e4658b58c5d964f3a662498bbba2e78034c6594fe\") { __typename transaction { hash block { height } } } }"}'
+  -d '{"query":"{ contractAction(address: \"ec565faac3103ff42017cebd3cc2510407b2068aa164ee54349ed7f0305e9e29\") { __typename transaction { hash block { height } } } }"}'
 ```
 
-It answers `ContractDeploy`, transaction `4914861a1a816e5394b6f3617081f4da7582c6e100fa6a614c3c22f7c0128b32`.
+It answers `ContractDeploy`, transaction `8c3284f69a795bd58fcf404f519ccf9d26909d55f2975ee747d04d75476453ce`.
+
+The Preprod contract was deployed from the browser through Lace — see [Deploying through the wallet](#deploying-through-the-wallet).
 
 ## The problem
 
@@ -144,6 +146,27 @@ This is the one place in the contract where `disclose()` carries real weight, an
 ### Why duplicate enrolment is blocked
 
 A member could originally enrol the same commitment repeatedly. The nullifier still held one-member-one-ballot, so the tally stayed honest — but `enrolled` overstated the roster, which made the anonymity set look larger than it really was. Since the commitment is already public the moment it enters the tree, keeping a parallel `Set` to reject duplicates costs nothing in privacy and keeps the published numbers truthful.
+
+### Deploying through the wallet
+
+The Preprod contract was not deployed from a script. It was deployed from the browser, through Lace.
+
+A Node deploy needs its own wallet, and a fresh wallet has to scan the chain before it can spend
+anything. On Preprod that is roughly 2.5M blocks, and two attempts here ran 30 and 54 minutes before
+failing. Lace already tracks the chain, so `deployContract` runs against the browser providers and the
+problem disappears.
+
+It also turned out to be the better product. A poll is one contract, so creating a poll *is* deploying
+one — that is a thing a user should be able to do, not an operator-only script. The address lands in
+`?poll=`, which makes the poll a link you can send to someone.
+
+Two preconditions are easy to miss, and both fail silently:
+
+- **NIGHT must be designated before it generates DUST.** Holding it is not enough. Undesignated NIGHT
+  shows a DUST tank of `0/0` with a fill time of `none`, and every signature attempt does nothing at
+  all rather than reporting why.
+- **Lace requires a local proof server** (`docker run -p 6300:6300 midnightntwrk/proof-server`). It is
+  a network requirement, not a preference.
 
 ### One poll per deployment
 
