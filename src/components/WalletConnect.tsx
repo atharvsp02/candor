@@ -10,33 +10,27 @@ type Props = {
 const short = (value: string) => (value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value);
 
 export function WalletConnect({ status, networkId, onConnect, onDisconnect }: Props) {
-  return (
-    <div className="wallet">
-      {status.kind === 'connected' ? (
-        <>
+  if (status.kind === 'connected') {
+    return (
+      <div className="wallet">
+        <div className="wallet-chip glass">
           <span className="dot dot-live" />
-          <div className="wallet-meta">
-            <strong>{status.wallet} connected</strong>
-            <code>{short(status.address)}</code>
-          </div>
-          <button className="ghost" onClick={onDisconnect}>
+          <strong>{status.wallet}</strong>
+          <code>{short(status.address)}</code>
+          <button className="btn btn-glass btn-sm" onClick={onDisconnect}>
             Disconnect
           </button>
-        </>
-      ) : (
-        <>
-          <span className={status.kind === 'error' ? 'dot dot-bad' : 'dot'} />
-          <div className="wallet-meta">
-            <strong>{status.kind === 'connecting' ? 'Connecting…' : 'Wallet not connected'}</strong>
-            <code>network: {networkId}</code>
-          </div>
-          <button onClick={onConnect} disabled={status.kind === 'connecting'}>
-            {status.kind === 'connecting' ? 'Connecting…' : 'Connect wallet'}
-          </button>
-        </>
-      )}
+        </div>
+      </div>
+    );
+  }
 
-      {status.kind === 'error' && <p className="error">{status.message}</p>}
+  return (
+    <div className="wallet">
+      <button className="btn btn-primary" onClick={onConnect} disabled={status.kind === 'connecting'}>
+        {status.kind === 'connecting' ? 'Connecting…' : `Connect wallet · ${networkId}`}
+      </button>
+      {status.kind === 'error' && <p className="wallet-error glass">{status.message}</p>}
     </div>
   );
 }

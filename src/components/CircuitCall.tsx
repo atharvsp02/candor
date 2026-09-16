@@ -14,92 +14,99 @@ type Props = {
 
 const LABELS = ['Yes', 'No', 'Abstain'];
 
-export function CircuitCall({ connected, hasPoll, shareUrl, tally, busy, notice, onCreatePoll, onEnrol, onVote }: Props) {
-  const total = tally ? tally.counts.reduce((sum, n) => sum + n, 0n) : 0n;
+const Status = ({ busy, notice, proving }: { busy: string | null; notice: string | null; proving: string }) => {
+  if (busy) {
+    return (
+      <p className="status status-proving">
+        <span className="spinner" />
+        {proving}
+      </p>
+    );
+  }
+  if (!notice) return null;
+  const ok = notice.includes('confirmed on chain');
+  return <p className={ok ? 'status status-note' : 'status status-bad'}>{notice}</p>;
+};
 
+export function CircuitCall({ connected, hasPoll, shareUrl, tally, busy, notice, onCreatePoll, onEnrol, onVote }: Props) {
   if (!hasPoll) {
     return (
-      <section className="panel">
-        <header className="panel-head">
-          <h2>No poll yet</h2>
+      <article className="card glass">
+        <header className="card-head">
+          <h3>No poll yet</h3>
           <p>A poll is a contract of its own. Deploy one through your wallet to begin.</p>
         </header>
         <div className="actions">
-          <button onClick={onCreatePoll} disabled={!connected || busy !== null}>
+          <button className="btn btn-primary" onClick={onCreatePoll} disabled={!connected || busy !== null}>
             {busy === 'Poll creation' ? 'Deploying…' : 'Create a poll'}
           </button>
         </div>
-        {busy === 'Poll creation' && (
-          <p className="proving">
-            <span className="spinner" />
-            Deploying through your wallet. This takes a minute.
-          </p>
-        )}
-        {notice && !busy && <p className="notice">{notice}</p>}
-      </section>
+        <Status busy={busy} notice={notice} proving="Deploying through your wallet. This takes a minute." />
+      </article>
     );
   }
 
+  const counts = tally?.counts ?? [0n, 0n, 0n];
+  const total = counts.reduce((sum, n) => sum + n, 0n);
+
   return (
-    <section className="panel">
-      <header className="panel-head">
-        <h2>The ballot</h2>
+    <article className="card glass">
+      <header className="card-head">
+        <h3>The ballot</h3>
         <p>Enrol once, then vote once. The chain proves both without learning who you are.</p>
       </header>
 
       <div className="share">
-        <span>Share this poll</span>
+        <span className="share-label">Share</span>
         <code>{shareUrl}</code>
-        <button className="ghost" onClick={() => void navigator.clipboard.writeText(shareUrl)}>
-          Copy
+        <button className="btn btn-glass btn-sm" onClick={() => void navigator.clipboard.writeText(shareUrl)}>
+          Copy link
         </button>
       </div>
 
       <div className="actions">
-        <button onClick={onEnrol} disabled={!connected || busy !== null}>
+        <button className="btn btn-primary" onClick={onEnrol} disabled={!connected || busy !== null}>
           {busy === 'Enrolment' ? 'Proving…' : 'Enrol in this poll'}
         </button>
       </div>
 
       <ol className="options">
-        {(tally?.counts ?? [0n, 0n, 0n]).map((count, index) => {
-          const share = total > 0n ? Number((count * 100n) / total) : 0;
-          const label = busy === `Ballot for option ${index}`;
+        {counts.map((count, index) => {
+          const share = total > 0n ? Number((count * 1000n) / total) / 10 : 0;
+          const proving = busy === `Ballot for option ${index}`;
           return (
-            <li key={index}>
+            <li key={index} className="option">
+              <div className="option-fill" style={{ width: `${share}%` }} />
               <div className="option-row">
                 <span className="option-name">{LABELS[index] ?? `Option ${index}`}</span>
                 <span className="option-count">{count.toString()}</span>
-                <button className="ghost" onClick={() => onVote(index)} disabled={!connected || busy !== null}>
-                  {label ? 'Proving…' : 'Vote'}
+                <span className="option-pct">{share.toFixed(0)}%</span>
+                <button className="btn btn-glass btn-sm" onClick={() => onVote(index)} disabled={!connected || busy !== null}>
+                  {proving ? 'Proving…' : 'Vote'}
                 </button>
-              </div>
-              <div className="bar">
-                <div className="bar-fill" style={{ width: `${share}%` }} />
               </div>
             </li>
           );
         })}
       </ol>
 
-      {busy && (
-        <p className="proving">
-          <span className="spinner" />
-          Generating a zero-knowledge proof in your browser. Your secret never leaves this machine.
-        </p>
-      )}
+      <Status
+        busy={busy}
+        notice={notice}
+        proving="Generating a zero-knowledge proof in your browser. Your secret never leaves this machine."
+      />
 
-      {notice && !busy && <p className="notice">{notice}</p>}
-
-      <footer className="panel-foot">
-        <span className="badge">Proved without revealing your input</span>
+      <footer className="card-foot">
+        <span className="badge">
+          <span className="dot dot-live" />
+          Proved without revealing your input
+        </span>
         {tally && (
           <span className="counts">
             {tally.enrolled.toString()} enrolled · {tally.cast.toString()} ballots · {tally.spent.toString()} nullifiers
-            spent
           </span>
         )}
       </footer>
-    </section>
+    </article>
   );
 }
