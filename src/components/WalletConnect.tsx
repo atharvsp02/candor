@@ -16,7 +16,7 @@ export function WalletConnect({ status, networkId, onConnect, onDisconnect }: Pr
         <>
           <span className="dot dot-live" />
           <div className="wallet-meta">
-            <strong>Lace connected</strong>
+            <strong>{status.wallet} connected</strong>
             <code>{short(status.address)}</code>
           </div>
           <button className="ghost" onClick={onDisconnect}>
@@ -31,7 +31,7 @@ export function WalletConnect({ status, networkId, onConnect, onDisconnect }: Pr
             <code>network: {networkId}</code>
           </div>
           <button onClick={onConnect} disabled={status.kind === 'connecting'}>
-            {status.kind === 'connecting' ? 'Connecting…' : 'Connect Lace'}
+            {status.kind === 'connecting' ? 'Connecting…' : 'Connect wallet'}
           </button>
         </>
       )}

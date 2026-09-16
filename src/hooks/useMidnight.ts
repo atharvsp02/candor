@@ -18,6 +18,13 @@ const OPTION_COUNT = 3n;
 
 const NETWORK_ID = (import.meta.env.VITE_NETWORK_ID ?? 'preprod') as NetworkId;
 
+/**
+ * Lace reports a prover URI, but its hosted one is retired and the wallet now
+ * requires a local proof server. An explicit override wins so a stale wallet
+ * setting cannot break proving.
+ */
+const PROOF_SERVER_OVERRIDE = import.meta.env.VITE_PROOF_SERVER_URI ?? '';
+
 /** A poll is one contract, so its address is the share link. */
 const pollFromUrl = (): string =>
   new URLSearchParams(window.location.search).get('poll') ?? import.meta.env.VITE_CONTRACT_ADDRESS ?? '';
@@ -47,22 +54,27 @@ export type PrivacyFacts = {
 export type Status =
   | { kind: 'disconnected' }
   | { kind: 'connecting' }
-  | { kind: 'connected'; address: string }
+  | { kind: 'connected'; address: string; wallet: string }
   | { kind: 'error'; message: string };
 
 const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
-const findWallet = (): InitialAPI | undefined => {
+/** Any DApp Connector v4 wallet will do — Lace and 1AM both inject here. */
+const findWallet = (): { api: InitialAPI; name: string } | undefined => {
   const injected = (window as unknown as { midnight?: Record<string, unknown> }).midnight;
   if (!injected) return undefined;
-  return Object.values(injected).find(
-    (candidate): candidate is InitialAPI =>
+  const entry = Object.entries(injected).find(
+    ([, candidate]) =>
       !!candidate &&
       typeof candidate === 'object' &&
       'apiVersion' in candidate &&
       semver.satisfies((candidate as InitialAPI).apiVersion, COMPATIBLE_WALLET_API),
   );
+  if (!entry) return undefined;
+  const [key, candidate] = entry;
+  const named = candidate as InitialAPI & { name?: string };
+  return { api: named, name: named.name ?? key };
 };
 
 const readTally = (state: Ledger): Tally => ({
@@ -79,6 +91,7 @@ export const useMidnight = () => {
   const [privacy, setPrivacy] = useState<PrivacyFacts | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [proverUri, setProverUri] = useState<string>(PROOF_SERVER_OVERRIDE);
 
   const providers = useRef<any>(null);
   const contract = useRef<any>(null);
@@ -118,11 +131,13 @@ export const useMidnight = () => {
     const config = await api.getConfiguration();
     const shielded = await api.getShieldedAddresses();
     const zkConfigProvider = new FetchZkConfigProvider(window.location.origin, fetch.bind(window));
+    const prover = PROOF_SERVER_OVERRIDE || config.proverServerUri || 'http://localhost:6300';
+    setProverUri(prover);
 
     return {
       privateStateProvider: browserPrivateStateProvider(),
       zkConfigProvider,
-      proofProvider: httpClientProofProvider(config.proverServerUri!, zkConfigProvider),
+      proofProvider: httpClientProofProvider(prover, zkConfigProvider),
       publicDataProvider: indexerPublicDataProvider(config.indexerUri, config.indexerWsUri),
       walletProvider: {
         getCoinPublicKey: () => shielded.shieldedCoinPublicKey,
@@ -166,14 +181,17 @@ export const useMidnight = () => {
     try {
       const wallet = findWallet();
       if (!wallet) {
-        throw new Error('No compatible Midnight wallet found. Install the Lace extension, enable Midnight, and reload.');
+        throw new Error('No compatible Midnight wallet found. Install Lace or 1AM, enable Midnight, and reload.');
       }
 
       let api: ConnectedAPI;
       try {
-        api = await wallet.connect(NETWORK_ID);
-      } catch {
-        throw new Error('The wallet refused the connection. Approve it in the extension and try again.');
+        api = await wallet.api.connect(NETWORK_ID);
+      } catch (cause) {
+        const detail = cause instanceof Error ? cause.message : String(cause);
+        throw new Error(
+          `The wallet refused the connection: ${detail}. Unlock Lace, approve the request for this site, and try again.`,
+        );
       }
 
       setNetworkId(NETWORK_ID);
@@ -191,7 +209,7 @@ export const useMidnight = () => {
       }
 
       const shielded = await api.getShieldedAddresses();
-      setStatus({ kind: 'connected', address: shielded.shieldedCoinPublicKey.toString() });
+      setStatus({ kind: 'connected', address: shielded.shieldedCoinPublicKey.toString(), wallet: wallet.name });
       if (contractAddress) await readChain(contractAddress);
     } catch (error) {
       setStatus({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
@@ -256,6 +274,7 @@ export const useMidnight = () => {
     busy,
     notice,
     contractAddress,
+    proverUri,
     shareUrl: contractAddress ? `${window.location.origin}${window.location.pathname}?poll=${contractAddress}` : '',
     networkId: NETWORK_ID,
     connect,

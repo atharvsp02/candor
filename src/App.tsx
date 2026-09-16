@@ -41,6 +41,12 @@ export default function App() {
       <footer className="colophon">
         <span>Contract</span>
         <code>{m.contractAddress || 'not configured'}</code>
+        {m.proverUri && (
+          <>
+            <span>Proving at</span>
+            <code>{m.proverUri}</code>
+          </>
+        )}
       </footer>
     </main>
   );
