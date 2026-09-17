@@ -1,10 +1,21 @@
 import './polyfills';
-import { StrictMode } from 'react';
+import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App';
+import './styles/base.css';
+
+const Landing = lazy(() => import('./site/Landing'));
+const AppPage = lazy(() => import('./app/AppPage'));
+
+const { pathname, search } = window.location;
+
+if (pathname === '/' && new URLSearchParams(search).has('poll')) {
+  window.history.replaceState({}, '', `/app${search}`);
+}
+
+const isApp = window.location.pathname.replace(/\/+$/, '') === '/app';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <Suspense fallback={<div className="boot" />}>{isApp ? <AppPage /> : <Landing />}</Suspense>
   </StrictMode>,
 );

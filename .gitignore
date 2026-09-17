@@ -62,5 +62,6 @@ temp/
 
 # Local devnet database
 midnight-level-db/
-public/
+public/*
+!public/favicon.svg
 .vite/
