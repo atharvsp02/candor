@@ -1,7 +1,7 @@
-import type { PrivacyFacts } from '../hooks/useMidnight';
+import type { PrivacyView } from '../view';
 
 type Props = {
-  privacy: PrivacyFacts | null;
+  privacy: PrivacyView | null;
 };
 
 const truncate = (value: string) => `${value.slice(0, 14)}…${value.slice(-8)}`;
@@ -70,8 +70,8 @@ export function PrivacyProof({ privacy }: Props) {
 
           {privacy.voted && (
             <p className="anonymity">
-              Your ballot is counted and indistinguishable from <strong>{privacy.anonymitySet.toString()}</strong>{' '}
-              {privacy.anonymitySet === 1n ? 'enrolled member' : 'enrolled members'}. The commitment and the nullifier
+              Your ballot is counted and indistinguishable from <strong>{privacy.anonymitySet}</strong>{' '}
+              {privacy.anonymitySet === 1 ? 'enrolled member' : 'enrolled members'}. The commitment and the nullifier
               above are both public — and nothing on chain links them to each other.
             </p>
           )}

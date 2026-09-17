@@ -1,11 +1,11 @@
-import type { Tally } from '../hooks/useMidnight';
+import type { TallyView } from '../view';
 
 type Props = {
   connected: boolean;
   hasPoll: boolean;
   shareUrl: string;
   onCreatePoll: () => void;
-  tally: Tally | null;
+  tally: TallyView | null;
   busy: string | null;
   notice: string | null;
   onEnrol: () => void;
@@ -46,8 +46,8 @@ export function CircuitCall({ connected, hasPoll, shareUrl, tally, busy, notice,
     );
   }
 
-  const counts = tally?.counts ?? [0n, 0n, 0n];
-  const total = counts.reduce((sum, n) => sum + n, 0n);
+  const counts = tally?.counts ?? [0, 0, 0];
+  const total = counts.reduce((sum, n) => sum + n, 0);
 
   return (
     <article className="card glass">
@@ -72,14 +72,14 @@ export function CircuitCall({ connected, hasPoll, shareUrl, tally, busy, notice,
 
       <ol className="options">
         {counts.map((count, index) => {
-          const share = total > 0n ? Number((count * 1000n) / total) / 10 : 0;
+          const share = total > 0 ? (count * 100) / total : 0;
           const proving = busy === `Ballot for option ${index}`;
           return (
             <li key={index} className="option">
               <div className="option-fill" style={{ width: `${share}%` }} />
               <div className="option-row">
                 <span className="option-name">{LABELS[index] ?? `Option ${index}`}</span>
-                <span className="option-count">{count.toString()}</span>
+                <span className="option-count">{count}</span>
                 <span className="option-pct">{share.toFixed(0)}%</span>
                 <button className="btn btn-glass btn-sm" onClick={() => onVote(index)} disabled={!connected || busy !== null}>
                   {proving ? 'Proving…' : 'Vote'}
@@ -103,7 +103,7 @@ export function CircuitCall({ connected, hasPoll, shareUrl, tally, busy, notice,
         </span>
         {tally && (
           <span className="counts">
-            {tally.enrolled.toString()} enrolled · {tally.cast.toString()} ballots · {tally.spent.toString()} nullifiers
+            {tally.enrolled} enrolled · {tally.cast} ballots · {tally.spent} nullifiers
           </span>
         )}
       </footer>

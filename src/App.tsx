@@ -1,9 +1,11 @@
 import { WalletConnect } from './components/WalletConnect';
 import { CircuitCall } from './components/CircuitCall';
 import { PrivacyProof } from './components/PrivacyProof';
-import { Hero } from './components/Hero';
+import { Hero, LiveStats } from './components/Hero';
 import { HowItWorks } from './components/HowItWorks';
+import { useMemo } from 'react';
 import { useMidnight } from './hooks/useMidnight';
+import { privacyView, tallyView } from './view';
 import './App.css';
 
 const REPO_URL = 'https://github.com/atharvsp02/candor';
@@ -12,18 +14,19 @@ export default function App() {
   const m = useMidnight();
   const connected = m.status.kind === 'connected';
   const hasPoll = Boolean(m.contractAddress);
+  const tally = useMemo(() => tallyView(m.tally), [m.tally]);
+  const privacy = useMemo(() => privacyView(m.privacy), [m.privacy]);
 
   return (
     <div className="page">
-      <div className="bg-glow" aria-hidden="true" />
 
       <nav className="nav">
         <a className="brand" href="#top">
           <svg className="brand-mark" viewBox="0 0 26 26" fill="none" aria-hidden="true">
             <defs>
               <linearGradient id="brand" x1="0" y1="0" x2="26" y2="26">
-                <stop offset="0" stopColor="#3ee97d" />
-                <stop offset="1" stopColor="#22f2ef" />
+                <stop offset="0" stopColor="#2f6bff" />
+                <stop offset="1" stopColor="#e0147c" />
               </linearGradient>
             </defs>
             <rect x="1" y="1" width="24" height="24" rx="7" stroke="url(#brand)" strokeWidth="1.6" />
@@ -35,7 +38,7 @@ export default function App() {
           Candor
         </a>
 
-        <div className="nav-links glass">
+        <div className="nav-links">
           <a href="#poll">Vote</a>
           <a href="#how">How it works</a>
           <a href={REPO_URL} target="_blank" rel="noreferrer">
@@ -44,12 +47,13 @@ export default function App() {
         </div>
 
         <div className="nav-end">
-          <WalletConnect status={m.status} networkId={m.networkId} onConnect={m.connect} onDisconnect={m.disconnect} />
+          <WalletConnect status={m.status} onConnect={m.connect} onDisconnect={m.disconnect} />
         </div>
       </nav>
 
       <main id="top">
-        <Hero tally={m.tally} hasPoll={hasPoll} />
+        <Hero hasPoll={hasPoll} />
+        <LiveStats tally={tally} />
 
         <section className="section" id="poll">
           <div className="section-head">
@@ -64,13 +68,13 @@ export default function App() {
               hasPoll={hasPoll}
               shareUrl={m.shareUrl}
               onCreatePoll={m.createPoll}
-              tally={m.tally}
+              tally={tally}
               busy={m.busy}
               notice={m.notice}
               onEnrol={m.enrol}
               onVote={m.vote}
             />
-            <PrivacyProof privacy={m.privacy} />
+            <PrivacyProof privacy={privacy} />
           </div>
         </section>
 
