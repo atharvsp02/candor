@@ -4,6 +4,8 @@
 
 > Anonymous polling where the anonymity is proven, not promised. One member, one ballot, enforced by a zero-knowledge proof.
 
+![Candor](docs/interface-hero.jpg)
+
 ## Contract Address
 
 | Network | Address | Deployed at |
@@ -165,8 +167,9 @@ Two preconditions are easy to miss, and both fail silently:
 - **NIGHT must be designated before it generates DUST.** Holding it is not enough. Undesignated NIGHT
   shows a DUST tank of `0/0` with a fill time of `none`, and every signature attempt does nothing at
   all rather than reporting why.
-- **Lace requires a local proof server** (`docker run -p 6300:6300 midnightntwrk/proof-server`). It is
-  a network requirement, not a preference.
+- **The prover the wallet reports has to be reachable from the browser.** Lace's own banner says a local
+  proof server is mandatory, but its settings also offer a hosted prover that works. The app lets
+  `VITE_PROOF_SERVER_URI` override whatever the wallet reports.
 
 ### One poll per deployment
 
@@ -200,11 +203,12 @@ Full source: [`contracts/candor.compact`](contracts/candor.compact).
 
 ## Tech Stack
 
-Midnight · Compact `0.31.1` · `@midnight-ntwrk/compact-runtime` · Midnight.js `4.1.x` · TypeScript · Node.js 22 · Vitest · Docker
+Midnight · Compact `0.31.1` · Midnight.js `4.1.x` · DApp Connector API v4 · React 19 · Vite 7 · TypeScript · Node.js 22 · Vitest · Docker
 
 ## Prerequisites
 
 - **Node.js 22+**
+- **A Midnight wallet** — [1AM](https://chromewebstore.google.com/detail/1am/bphnkdkcnfhompoegfpgnkidcjfbojjp) or [Lace](https://chromewebstore.google.com/detail/lace/gafhhkghbfjjkeiendhlofajokpaflmk), set to Preprod and funded from the [faucet](https://faucet.preprod.midnight.network)
 - **Docker** — runs the proof server and the bundled local devnet
 - **The Compact toolchain:**
   ```bash
@@ -241,7 +245,40 @@ Ten tests in three groups:
 
 The privacy group is the point. It asserts the properties this product actually claims, so a change that quietly breaks anonymity fails the suite rather than shipping.
 
-## Run It
+## Run the web app
+
+```bash
+cp .env.example .env
+npm run dev
+```
+
+Open `http://localhost:5173`, connect a wallet, then enrol and vote. `npm run dev` copies the proving
+keys into `public/`, because the browser fetches them from the app's own origin before it proves.
+
+| Variable | Purpose |
+|---|---|
+| `VITE_NETWORK_ID` | `preprod` |
+| `VITE_CONTRACT_ADDRESS` | the poll to open when the URL has no `?poll=` |
+| `VITE_INDEXER_URI` / `VITE_INDEXER_WS_URI` | the public indexer the tally is read from |
+| `VITE_PROOF_SERVER_URI` | optional — overrides the prover the wallet reports |
+
+A poll is a contract, so its address is the share link: `/?poll=<address>` opens that poll directly.
+With no poll configured, the page offers to deploy a new one through the connected wallet.
+
+### Wallets
+
+Any wallet that implements DApp Connector API v4 works; the app picks up whichever one has injected
+itself at `window.midnight`. Both have been used against the Preprod contract: **Lace** deployed it,
+and **1AM** enrolled, voted, and had a second ballot rejected by the nullifier check.
+
+With Lace, NIGHT has to be designated before it generates the DUST that pays for transactions, and
+the extension needs to be reopened after its Midnight settings change.
+
+Proving happens in the browser against the prover URI the wallet reports. If that prover is
+unreachable, set `VITE_PROOF_SERVER_URI` — for example to a local
+`docker run -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server`.
+
+## Run the CLI
 
 Against the bundled local devnet — no faucet, no wallet extension, no waiting:
 
@@ -277,14 +314,24 @@ Set `CANDOR_OPTIONS` to change the number of options on the ballot (default 3).
 ## Project Layout
 
 ```
-contracts/candor.compact    the contract
-managed/candor/             compiled circuits, proving and verifying keys
-src/witnesses.ts            private state and the witness implementations
-src/deploy.ts               deploy to local devnet, preview, or preprod
-src/cli.ts                  enrol, vote, read the tally
-src/address.ts              derive the funding address without syncing
-tests/candor.test.ts        the test suite
-.github/workflows/ci.yml    compile, typecheck, test on every push
+contracts/candor.compact          the contract
+managed/candor/                   compiled circuits, proving and verifying keys
+tests/candor.test.ts              the test suite
+
+src/hooks/useMidnight.ts          wallet, providers, proving and ledger reads
+src/components/WalletConnect.tsx  connect and disconnect
+src/components/CircuitCall.tsx    create a poll, enrol, vote, live tally
+src/components/PrivacyProof.tsx   what the chain holds about you, read back from it
+src/components/Hero.tsx           landing section with live on-chain counts
+src/browser-private-state.ts      private state for the browser; the secret stays in localStorage
+
+src/witnesses.ts                  witness implementations for the CLI
+src/deploy.ts                     deploy to local devnet, preview, or preprod
+src/cli.ts                        enrol, vote, read the tally from a terminal
+src/address.ts                    derive the funding address without syncing
+
+.github/workflows/ci.yml          compile, typecheck, test and build on every push
+vercel.json                       static hosting for the web app
 ```
 
 ## Initial Idea
@@ -298,6 +345,10 @@ Midnight is the only place this is fixable at the infrastructure layer instead o
 The next step is to make the cryptography disappear. Creating a poll and sharing a link should take under a minute, and a respondent should never learn the words "Merkle" or "nullifier" — they should simply believe the anonymity, because for the first time it is worth believing.
 
 ## Screenshots
+
+**The ballot — live tally read from Preprod**
+
+![ballot](docs/interface-poll.jpg)
 
 **Compile — circuits and keys generated**
 
