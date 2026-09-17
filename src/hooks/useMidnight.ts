@@ -18,14 +18,8 @@ const OPTION_COUNT = 3n;
 
 const NETWORK_ID = (import.meta.env.VITE_NETWORK_ID ?? 'preprod') as NetworkId;
 
-/**
- * Lace reports a prover URI, but its hosted one is retired and the wallet now
- * requires a local proof server. An explicit override wins so a stale wallet
- * setting cannot break proving.
- */
 const PROOF_SERVER_OVERRIDE = import.meta.env.VITE_PROOF_SERVER_URI ?? '';
 
-/** A poll is one contract, so its address is the share link. */
 const pollFromUrl = (): string =>
   new URLSearchParams(window.location.search).get('poll') ?? import.meta.env.VITE_CONTRACT_ADDRESS ?? '';
 
@@ -42,7 +36,6 @@ export type Tally = {
   readonly spent: bigint;
 };
 
-/** What the chain can see about you, and what it cannot. Drives the privacy panel. */
 export type PrivacyFacts = {
   readonly commitment: string;
   readonly nullifier: string;
@@ -60,7 +53,6 @@ export type Status =
 const hex = (bytes: Uint8Array) =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
-/** Any DApp Connector v4 wallet will do — Lace and 1AM both inject here. */
 const findWallet = (): { api: InitialAPI; name: string } | undefined => {
   const injected = (window as unknown as { midnight?: Record<string, unknown> }).midnight;
   if (!injected) return undefined;
