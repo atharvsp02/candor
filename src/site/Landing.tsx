@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { SiteNav } from './SiteNav';
 import { Hero } from './Hero';
-import { Problem, Stack } from './Problem';
+import { Facts, Problem } from './Problem';
 import { Features } from './Features';
 import { Benefits, Compare, Steps } from './Benefits';
 import { Layers } from './Layers';
@@ -23,7 +23,7 @@ export default function Landing() {
       <main className="frame">
         <Hero />
         <Hatch />
-        <Stack />
+        <Facts />
         <Hatch />
         <Problem />
         <Hatch />

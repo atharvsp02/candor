@@ -1,12 +1,11 @@
-import { Code, Cpu, Key, Moon, Wallet } from '../ui/icons';
 import { Art, SectionHead, type Tone } from './common';
 
-const STACK = [
-  { name: 'Midnight', icon: Moon },
-  { name: 'Compact', icon: Code },
-  { name: 'Midnight.js', icon: Cpu },
-  { name: 'Lace', icon: Wallet },
-  { name: '1AM', icon: Key },
+const FACTS = [
+  { value: '1', label: 'ballot per member' },
+  { value: '0', label: 'voters identified' },
+  { value: '1,024', label: 'seats per poll' },
+  { value: '2–8', label: 'options per ballot' },
+  { value: '100%', label: 'of the tally on chain' },
 ];
 
 const PROBLEMS: { tone: Tone; pos: string; title: string; body: string }[] = [
@@ -30,17 +29,17 @@ const PROBLEMS: { tone: Tone; pos: string; title: string; body: string }[] = [
   },
 ];
 
-export function Stack() {
+export function Facts() {
   return (
-    <section className="stack" aria-labelledby="stack-title">
-      <h2 id="stack-title" className="kicker kicker-bright">
-        Built on the Midnight stack
+    <section className="strip" aria-labelledby="strip-title">
+      <h2 id="strip-title" className="kicker kicker-bright">
+        Enforced by the contract
       </h2>
-      <ul className="stack-row">
-        {STACK.map(({ name, icon: Icon }) => (
-          <li key={name}>
-            <Icon size={18} />
-            {name}
+      <ul className="strip-row">
+        {FACTS.map((fact) => (
+          <li key={fact.label}>
+            <strong>{fact.value}</strong>
+            <span>{fact.label}</span>
           </li>
         ))}
       </ul>

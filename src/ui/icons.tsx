@@ -31,12 +31,6 @@ export const ArrowDown = (props: IconProps) => (
   </Icon>
 );
 
-export const ArrowUpRight = (props: IconProps) => (
-  <Icon {...props}>
-    <path d="M7 17 17 7M8 7h9v9" />
-  </Icon>
-);
-
 export const Check = (props: IconProps) => (
   <Icon {...props}>
     <path d="m5 12.5 4.5 4.5L19 7.5" />
@@ -182,12 +176,6 @@ export const Cpu = (props: IconProps) => (
   <Icon {...props}>
     <rect x="6" y="6" width="12" height="12" rx="2" />
     <path d="M10 10h4v4h-4zM9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3" />
-  </Icon>
-);
-
-export const Moon = (props: IconProps) => (
-  <Icon {...props}>
-    <path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z" />
   </Icon>
 );
 
