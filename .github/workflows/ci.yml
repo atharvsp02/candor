@@ -36,3 +36,9 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Build web app
+        run: npm run build
+        env:
+          VITE_NETWORK_ID: preprod
+          VITE_CONTRACT_ADDRESS: ec565faac3103ff42017cebd3cc2510407b2068aa164ee54349ed7f0305e9e29
