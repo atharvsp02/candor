@@ -203,7 +203,7 @@ Full source: [`contracts/candor.compact`](contracts/candor.compact).
 
 ## Tech Stack
 
-Midnight · Compact `0.31.1` · Midnight.js `4.1.x` · DApp Connector API v4 · React 19 · Vite 7 · TypeScript · Node.js 22 · Vitest · Docker
+Midnight · Compact `0.31.1` · Midnight.js `4.1.x` · DApp Connector API v4 · React 19 · React Three Fiber · Vite 7 · TypeScript · Node.js 22 · Vitest · Docker
 
 ## Prerequisites
 
@@ -322,7 +322,9 @@ src/hooks/useMidnight.ts          wallet, providers, proving and ledger reads
 src/components/WalletConnect.tsx  connect and disconnect
 src/components/CircuitCall.tsx    create a poll, enrol, vote, live tally
 src/components/PrivacyProof.tsx   what the chain holds about you, read back from it
-src/components/Hero.tsx           landing section with live on-chain counts
+src/components/Hero.tsx           landing section and live on-chain counts
+src/components/TrackScene.tsx     3D hero: voters roll through a proof gate and come out identical
+src/view.ts                       ledger values converted for rendering
 src/browser-private-state.ts      private state for the browser; the secret stays in localStorage
 
 src/witnesses.ts                  witness implementations for the CLI
