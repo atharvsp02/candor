@@ -121,7 +121,7 @@ computed root, which is already public, and proves membership without naming a l
 
 **How to verify it yourself**
 
-Connect a wallet in the live demo. The "What the chain learns" panel reads your commitment and
+Connect a wallet in the live demo. The "What the chain knows about you" panel reads your commitment and
 nullifier back from the ledger and shows the size of the anonymity set they are hidden within. Every
 value shown is fetched from the chain; the two redacted rows are redacted because there is nothing on
 chain to fetch.
@@ -203,7 +203,7 @@ Full source: [`contracts/candor.compact`](contracts/candor.compact).
 
 ## Tech Stack
 
-Midnight · Compact `0.31.1` · Midnight.js `4.1.x` · DApp Connector API v4 · React 19 · React Three Fiber · Vite 7 · TypeScript · Node.js 22 · Vitest · Docker
+Midnight · Compact `0.31.1` · Midnight.js `4.1.x` · DApp Connector API v4 · React 19 · Vite 7 · TypeScript · Node.js 22 · Vitest · Docker
 
 ## Prerequisites
 
@@ -252,7 +252,8 @@ cp .env.example .env
 npm run dev
 ```
 
-Open `http://localhost:5173`, connect a wallet, then enrol and vote. `npm run dev` copies the proving
+Open `http://localhost:5173` for the landing page, or go straight to `http://localhost:5173/app`,
+connect a wallet, then enrol and vote. `npm run dev` copies the proving
 keys into `public/`, because the browser fetches them from the app's own origin before it proves.
 
 | Variable | Purpose |
@@ -262,7 +263,8 @@ keys into `public/`, because the browser fetches them from the app's own origin 
 | `VITE_INDEXER_URI` / `VITE_INDEXER_WS_URI` | the public indexer the tally is read from |
 | `VITE_PROOF_SERVER_URI` | optional — overrides the prover the wallet reports |
 
-A poll is a contract, so its address is the share link: `/?poll=<address>` opens that poll directly.
+A poll is a contract, so its address is the share link: `/app?poll=<address>` opens that poll directly
+(older `/?poll=<address>` links are redirected there).
 With no poll configured, the page offers to deploy a new one through the connected wallet.
 
 ### Wallets
@@ -319,11 +321,15 @@ managed/candor/                   compiled circuits, proving and verifying keys
 tests/candor.test.ts              the test suite
 
 src/hooks/useMidnight.ts          wallet, providers, proving and ledger reads
-src/components/WalletConnect.tsx  connect and disconnect
-src/components/CircuitCall.tsx    create a poll, enrol, vote, live tally
-src/components/PrivacyProof.tsx   what the chain holds about you, read back from it
-src/components/Hero.tsx           landing section and live on-chain counts
-src/components/TrackScene.tsx     3D hero: voters roll through a proof gate and come out identical
+src/main.tsx                      routes / to the landing page and /app to the poll
+src/site/                         landing page sections, with a live-rendered preview of the app
+src/app/AppPage.tsx               binds the wallet hook to the dashboard and logs session activity
+src/app/Dashboard.tsx             the poll dashboard, shared by /app and the landing preview
+src/app/BallotPanel.tsx           connect, enrol and vote
+src/app/TallyCard.tsx             live tally chart, or deploying a new poll when none is open
+src/app/PrivacyCard.tsx           what the chain holds about you, read back from it
+src/styles/                       design tokens, landing and dashboard styles
+src/assets/art/                   cloud artwork in five palettes
 src/view.ts                       ledger values converted for rendering
 src/browser-private-state.ts      private state for the browser; the secret stays in localStorage
 
@@ -348,7 +354,7 @@ The next step is to make the cryptography disappear. Creating a poll and sharing
 
 ## Screenshots
 
-**The ballot — live tally read from Preprod**
+**The poll dashboard — live tally read from Preprod**
 
 ![ballot](docs/interface-poll.jpg)
 
