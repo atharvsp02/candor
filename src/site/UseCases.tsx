@@ -1,4 +1,6 @@
 import { Ballot, Pulse, Shield, Users } from '../ui/icons';
+import type { CSSProperties } from 'react';
+import { optionLabel, OPTION_COLORS } from '../ui/format';
 import { Art, SectionHead, type Tone } from './common';
 
 const USES = [
@@ -60,17 +62,27 @@ export function UseCases() {
         {USES.map(({ tone, pos, question, who, role, icon: Icon }) => (
           <article key={question} className="use">
             <Art tone={tone} pos={pos} zoom="auto 260%" className="use-art">
-              <blockquote>{question}</blockquote>
+              <div className="use-panel">
+                <span className="use-kicker">Sample ballot</span>
+                <blockquote>{question}</blockquote>
+                <div className="use-options">
+                  {[0, 1, 2].map((option) => (
+                    <span key={option} style={{ '--c': OPTION_COLORS[option] } as CSSProperties}>
+                      <i />
+                      {optionLabel(option)}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </Art>
             <footer className="use-foot">
-              <Art tone={tone} pos={pos} zoom="auto 900%" className="use-avatar" />
+              <span className="use-icon" aria-hidden="true">
+                <Icon size={16} />
+              </span>
               <div>
                 <strong>{who}</strong>
                 <span>{role}</span>
               </div>
-              <span className="use-icon" aria-hidden="true">
-                <Icon size={15} />
-              </span>
             </footer>
           </article>
         ))}

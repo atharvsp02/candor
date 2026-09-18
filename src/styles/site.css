@@ -281,9 +281,13 @@
   grid-column: span 3;
 }
 
-.feature-art,
-.icon-card-art {
+.feature-art {
   height: 200px;
+  padding: 18px 18px 0;
+}
+
+.icon-card-art {
+  height: 186px;
   padding: 18px 18px 0;
 }
 
@@ -617,8 +621,8 @@
 .glyph {
   --zoom: 620px auto;
   display: block;
-  width: 64px;
-  height: 64px;
+  width: 96px;
+  height: 96px;
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
@@ -820,34 +824,79 @@
 }
 
 .use-art {
-  height: 176px;
+  height: 204px;
   padding: 14px;
 }
 
-.use-art blockquote {
+.use-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   height: 100%;
-  margin: 0;
   padding: 16px;
   border-radius: 6px;
   background: rgba(24, 23, 22, 0.95);
+}
+
+.use-kicker {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.use-panel blockquote {
+  margin: 0;
   font-size: 15px;
   line-height: 1.45;
   letter-spacing: -0.01em;
   color: #fff;
 }
 
+.use-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.use-options span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.use-options i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
 .use-foot {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
 }
 
-.use-avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 4px;
+.use-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--raise);
+  color: var(--text-2);
 }
 
 .use-foot strong {
@@ -863,16 +912,6 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
-}
-
-.use-icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  background: var(--raise);
-  color: var(--text-2);
 }
 
 .faq {
