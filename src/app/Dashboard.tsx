@@ -11,7 +11,7 @@ import { DetailsCard } from './DetailsCard';
 import { useCopy } from './useCopy';
 
 export type ActivityEntry = {
-  readonly id: number;
+  readonly id: string;
   readonly at: Date;
   readonly title: string;
   readonly detail?: string;
@@ -28,7 +28,8 @@ export type DashboardProps = {
   networkId: string;
   proverUri: string;
   shareUrl: string;
-  activity: readonly ActivityEntry[];
+  activity: readonly ActivityEntry[] | null;
+  activityFailed?: boolean;
   preview?: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -116,6 +117,7 @@ export function Dashboard(props: DashboardProps) {
                 networkId={props.networkId}
                 options={tally?.counts.length ?? 0}
                 activity={props.activity}
+                activityFailed={props.activityFailed ?? false}
                 copied={copied}
                 onCopy={copy}
               />

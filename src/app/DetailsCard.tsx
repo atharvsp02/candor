@@ -1,18 +1,28 @@
 import type { ActivityEntry } from './Dashboard';
 import { Check, Copy } from '../ui/icons';
-import { clock, middle } from '../ui/format';
+import { middle, when } from '../ui/format';
 
 type Props = {
   contractAddress: string;
   shareUrl: string;
   networkId: string;
   options: number;
-  activity: readonly ActivityEntry[];
+  activity: readonly ActivityEntry[] | null;
+  activityFailed: boolean;
   copied: string | null;
   onCopy: (key: string, text: string) => void;
 };
 
-export function DetailsCard({ contractAddress, shareUrl, networkId, options, activity, copied, onCopy }: Props) {
+export function DetailsCard({
+  contractAddress,
+  shareUrl,
+  networkId,
+  options,
+  activity,
+  activityFailed,
+  copied,
+  onCopy,
+}: Props) {
   const invite = shareUrl.replace(/^https?:\/\//, '');
 
   return (
@@ -60,10 +70,17 @@ export function DetailsCard({ contractAddress, shareUrl, networkId, options, act
         </div>
       </dl>
 
-      <div className="activity">
-        <span className="activity-title">Session activity</span>
-        {activity.length === 0 ? (
-          <p className="activity-empty">Wallet and ballot events from this session appear here as they happen.</p>
+      <div className="activity" id="activity">
+        <span className="activity-title">Activity</span>
+        {activity === null && activityFailed ? (
+          <p className="activity-empty">The poll’s history could not be read from the indexer just now.</p>
+        ) : activity === null ? (
+          <p className="activity-empty">
+            <span className="spinner" />
+            Reading the poll’s history from the ledger…
+          </p>
+        ) : activity.length === 0 ? (
+          <p className="activity-empty">Nothing has happened on this poll yet.</p>
         ) : (
           <ol>
             {activity.map((entry) => (
@@ -73,7 +90,9 @@ export function DetailsCard({ contractAddress, shareUrl, networkId, options, act
                   <strong>{entry.title}</strong>
                   {entry.detail && <span>{entry.detail}</span>}
                 </div>
-                <time dateTime={entry.at.toISOString()}>{clock(entry.at)}</time>
+                <time dateTime={entry.at.toISOString()} title={entry.at.toLocaleString()}>
+                  {when(entry.at)}
+                </time>
               </li>
             ))}
           </ol>

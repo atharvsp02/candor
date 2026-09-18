@@ -11,8 +11,19 @@ export const middle = (value: string, head = 6, tail = 4) =>
 
 export const percent = (part: number, whole: number) => (whole > 0 ? Math.round((part * 100) / whole) : 0);
 
-export const clock = (date: Date) =>
-  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'auto', style: 'short' });
+
+export const when = (date: Date, now = Date.now()) => {
+  const seconds = Math.round((date.getTime() - now) / 1000);
+  const span = Math.abs(seconds);
+  if (span < 45) return 'just now';
+  if (span < 3600) return RELATIVE.format(Math.round(seconds / 60), 'minute');
+  if (span < 86400) return RELATIVE.format(Math.round(seconds / 3600), 'hour');
+  if (span < 2592000) return RELATIVE.format(Math.round(seconds / 86400), 'day');
+  return date.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+export const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 export const hostOf = (uri: string) => {
   try {

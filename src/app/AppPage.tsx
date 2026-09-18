@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMidnight } from '../hooks/useMidnight';
+import { useLivePoll } from '../live/useLivePoll';
 import { privacyView, tallyView } from '../view';
 import { middle } from '../ui/format';
+import { chainActivity, latestFirst } from './activity';
 import { Dashboard, type ActivityEntry } from './Dashboard';
 import '../styles/dash.css';
 
@@ -11,11 +13,13 @@ export default function AppPage() {
   const m = useMidnight();
   const tally = useMemo(() => tallyView(m.tally), [m.tally]);
   const privacy = useMemo(() => privacyView(m.privacy), [m.privacy]);
-  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [session, setSession] = useState<ActivityEntry[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const live = useLivePoll(m.contractAddress, refreshKey);
   const nextId = useRef(0);
 
   const log = useCallback((entry: Omit<ActivityEntry, 'id' | 'at'>) => {
-    setActivity((list) => [{ ...entry, id: nextId.current++, at: new Date() }, ...list].slice(0, 5));
+    setSession((list) => [{ ...entry, id: `session-${nextId.current++}`, at: new Date() }, ...list].slice(0, 6));
   }, []);
 
   useEffect(() => {
@@ -33,16 +37,26 @@ export default function AppPage() {
   useEffect(() => {
     if (!m.notice) return;
     if (m.notice.endsWith(CONFIRMED)) {
-      log({ title: `${m.notice.slice(0, -CONFIRMED.length)} confirmed`, detail: 'accepted on chain', tone: 'ok' });
+      setRefreshKey((key) => key + 1);
     } else {
       log({ title: 'Transaction rejected', detail: m.notice, tone: 'bad' });
     }
   }, [m.notice, log]);
 
+  const activity = useMemo(
+    () => (live.events ? latestFirst([...session, ...chainActivity(live.events)]) : session.length ? session : null),
+    [live.events, session],
+  );
+
+  const refresh = useCallback(() => {
+    void m.refresh();
+    setRefreshKey((key) => key + 1);
+  }, [m]);
+
   return (
     <Dashboard
       status={m.status}
-      tally={tally}
+      tally={tally ?? live.tally}
       privacy={privacy}
       busy={m.busy}
       notice={m.notice}
@@ -51,12 +65,13 @@ export default function AppPage() {
       proverUri={m.proverUri}
       shareUrl={m.shareUrl}
       activity={activity}
+      activityFailed={live.historyFailed}
       onConnect={m.connect}
       onDisconnect={m.disconnect}
       onCreatePoll={m.createPoll}
       onEnrol={m.enrol}
       onVote={m.vote}
-      onRefresh={() => void m.refresh()}
+      onRefresh={refresh}
     />
   );
 }

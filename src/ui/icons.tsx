@@ -186,13 +186,6 @@ export const Key = (props: IconProps) => (
   </Icon>
 );
 
-export const Alert = (props: IconProps) => (
-  <Icon {...props}>
-    <circle cx="12" cy="12" r="8.5" />
-    <path d="M12 8v4.5M12 16h.01" />
-  </Icon>
-);
-
 export const Minus = (props: IconProps) => (
   <Icon {...props}>
     <path d="M6 12h12" />

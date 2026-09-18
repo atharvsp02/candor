@@ -1,6 +1,11 @@
-import type { CSSProperties, ReactNode } from 'react';
-import { Alert, Check, Cpu, Key, Wallet } from '../ui/icons';
-import { OPTION_COLORS } from '../ui/format';
+import type { ReactNode } from 'react';
+import type { TallyView } from '../view';
+import type { ChainEvent } from '../live/indexer';
+import { NETWORK_ID } from '../live/indexer';
+import type { LivePoll } from '../live/useLivePoll';
+import { EVENT_TITLES } from '../app/activity';
+import { Ballot, Check, Cpu, Key, Plus, Users, Wallet } from '../ui/icons';
+import { middle, optionLabel, OPTION_COLORS, percent, ROSTER_CAPACITY, titleCase, when } from '../ui/format';
 import { Art, SectionHead, type Tone } from './common';
 
 type FeatureProps = {
@@ -16,9 +21,7 @@ function Feature({ tone, pos, title, body, wide, children }: FeatureProps) {
   return (
     <article className={wide ? 'feature feature-wide' : 'feature'}>
       <Art tone={tone} pos={pos} zoom="auto 260%" className="feature-art">
-        <div className="mini" aria-hidden="true">
-          {children}
-        </div>
+        <div className="mini">{children}</div>
       </Art>
       <div className="feature-copy">
         <h3>{title}</h3>
@@ -28,36 +31,49 @@ function Feature({ tone, pos, title, body, wide, children }: FeatureProps) {
   );
 }
 
-const OPTIONS = [
-  { label: 'Yes', count: 53 },
-  { label: 'No', count: 29 },
-  { label: 'Abstain', count: 9 },
-];
+const LiveChip = () => (
+  <span className="mini-chip">
+    <span className="dot dot-live" />
+    Live · {titleCase(NETWORK_ID)}
+  </span>
+);
 
-function TallyMini() {
+const show = (value: number | undefined) => (value === undefined ? '—' : value.toLocaleString());
+
+function TallyMini({ tally }: { tally: TallyView | null }) {
+  const counts = tally?.counts ?? [0, 0, 0];
+  const most = Math.max(...counts);
+  const leader = most > 0 ? counts.indexOf(most) : -1;
+
   return (
     <>
       <div className="mini-head">
         <div>
           <span className="mini-label">Ballots cast</span>
           <strong className="mini-value">
-            91 <span className="tag tag-green">71% turnout</span>
+            {show(tally?.cast)}
+            {tally && <span className="tag tag-green">{percent(tally.cast, tally.enrolled)}% turnout</span>}
           </strong>
         </div>
-        <span className="mini-btn">Recount</span>
+        <LiveChip />
       </div>
       <div className="mini-seg">
-        {OPTIONS.map((option, index) => (
-          <span key={option.label} className={index === 0 ? 'is-on' : undefined}>
-            {option.label}
+        {counts.map((_, index) => (
+          <span key={index} className={index === leader ? 'is-on' : undefined}>
+            {optionLabel(index)}
           </span>
         ))}
       </div>
-      <div className="mini-bars">
-        {OPTIONS.map((option, index) => (
-          <div key={option.label}>
-            <i style={{ height: Math.round((option.count * 34) / 53), background: OPTION_COLORS[index] }} />
-            <span>{option.count}</span>
+      <div className="mini-bars" role="img" aria-label={counts.map((c, i) => `${optionLabel(i)} ${c}`).join(', ')}>
+        {counts.map((count, index) => (
+          <div key={index}>
+            <i
+              style={{
+                height: Math.max(2, Math.round((count * 34) / Math.max(1, most))),
+                background: OPTION_COLORS[index],
+              }}
+            />
+            <span>{tally ? count : '—'}</span>
           </div>
         ))}
       </div>
@@ -65,30 +81,31 @@ function TallyMini() {
   );
 }
 
-const SPLIT = [
-  { label: 'Enrolled', value: '128', width: '100%' },
-  { label: 'Voted', value: '91', width: '71%' },
-  { label: 'Linked', value: '0', width: '2%' },
-];
+function RosterMini({ tally }: { tally: TallyView | null }) {
+  const split = [
+    { label: 'Enrolled', value: tally?.enrolled, width: tally?.enrolled ? 100 : 0 },
+    { label: 'Voted', value: tally?.cast, width: tally ? percent(tally.cast, tally.enrolled) : 0 },
+    { label: 'Linked', value: tally ? 0 : undefined, width: 0 },
+  ];
 
-function RosterMini() {
   return (
     <>
       <div className="mini-head">
         <div>
           <span className="mini-label">Roster</span>
           <strong className="mini-value">
-            128 <span className="tag">members</span>
+            {show(tally?.enrolled)}
+            <span className="tag">of {ROSTER_CAPACITY.toLocaleString()} seats</span>
           </strong>
         </div>
-        <span className="mini-btn">Root</span>
+        <span className="mini-chip">Merkle depth 10</span>
       </div>
       <div className="mini-split">
-        {SPLIT.map((item, index) => (
+        {split.map((item, index) => (
           <div key={item.label}>
             <span className="mini-label">{item.label}</span>
-            <strong>{item.value}</strong>
-            <i style={{ width: item.width, background: OPTION_COLORS[index] } as CSSProperties} />
+            <strong>{show(item.value)}</strong>
+            <i style={{ width: `${item.width}%`, background: OPTION_COLORS[index] }} />
           </div>
         ))}
       </div>
@@ -96,25 +113,50 @@ function RosterMini() {
   );
 }
 
-const EVENTS = [
-  { tone: 'ok', title: 'Ballot accepted', detail: 'nullifier 9d02…f5e4 spent', time: 'Now' },
-  { tone: 'bad', title: 'Second ballot rejected', detail: 'this member has already voted', time: '2 min' },
-  { tone: 'info', title: 'Member enrolled', detail: 'commitment 3fa1…c12b added', time: '6 min' },
-];
+const EVENT_ICONS = { deploy: Plus, enroll: Users, vote: Check, update: Ballot };
 
-function GuardMini() {
+function HistoryMini({ events, failed }: { events: readonly ChainEvent[] | null; failed: boolean }) {
+  if (!events) {
+    return (
+      <p className="mini-empty">
+        {failed ? (
+          'The ledger could not be reached just now.'
+        ) : (
+          <>
+            <span className="spinner" />
+            Reading the poll’s history from the ledger…
+          </>
+        )}
+      </p>
+    );
+  }
+
+  if (events.length === 0) return <p className="mini-empty">Nothing has happened on this poll yet.</p>;
+
   return (
     <ul className="mini-events">
-      {EVENTS.map((event) => (
-        <li key={event.title} className={`ev ev-${event.tone}`}>
-          <span className="ev-icon">{event.tone === 'bad' ? <Alert size={15} /> : <Check size={14} />}</span>
-          <div>
-            <strong>{event.title}</strong>
-            <span>{event.detail}</span>
-          </div>
-          <time>{event.time}</time>
-        </li>
-      ))}
+      {[...events]
+        .reverse()
+        .slice(0, 3)
+        .map((event) => {
+          const Icon = EVENT_ICONS[event.kind];
+          return (
+            <li key={event.hash} className={`ev ev-${event.kind === 'vote' ? 'ok' : 'info'}`}>
+              <span className="ev-icon">
+                <Icon size={13} />
+              </span>
+              <div>
+                <strong>{EVENT_TITLES[event.kind]}</strong>
+                <span>
+                  block {event.height.toLocaleString()} · tx {middle(event.hash, 6, 4)}
+                </span>
+              </div>
+              <time dateTime={event.at.toISOString()} title={event.at.toLocaleString()}>
+                {when(event.at)}
+              </time>
+            </li>
+          );
+        })}
     </ul>
   );
 }
@@ -146,30 +188,30 @@ function CircuitsMini() {
 }
 
 const WALLETS = [
-  { name: 'Lace', detail: 'Midnight Preprod', icon: Wallet, action: 'Connect' },
-  { name: '1AM', detail: 'Midnight Preprod', icon: Key, action: 'Connect' },
-  { name: 'DApp Connector v4', detail: 'any compatible wallet', icon: Cpu, action: 'Supported' },
-  { name: 'Local proof server', detail: 'localhost:6300', icon: Cpu, action: 'Optional' },
+  { name: 'Lace', detail: 'browser extension', icon: Wallet, status: 'Supported' },
+  { name: '1AM', detail: 'browser extension', icon: Key, status: 'Supported' },
+  { name: 'DApp Connector API', detail: 'version 4', icon: Cpu, status: 'Required' },
+  { name: 'Proof server', detail: 'wallet default or local', icon: Cpu, status: 'Optional' },
 ];
 
 function WalletsMini() {
   return (
     <ul className="mini-rows">
-      {WALLETS.map(({ name, detail, icon: Icon, action }) => (
+      {WALLETS.map(({ name, detail, icon: Icon, status }) => (
         <li key={name}>
           <span className="row-icon">
             <Icon size={14} />
           </span>
           <span className="row-name">{name}</span>
           <span className="row-mid row-muted">{detail}</span>
-          <span className="row-pill">{action}</span>
+          <span className="row-pill">{status}</span>
         </li>
       ))}
     </ul>
   );
 }
 
-export function Features() {
+export function Features({ live }: { live: LivePoll }) {
   return (
     <section className="block" id="features">
       <SectionHead kicker="Solution" title="One member. One ballot. Zero trace." />
@@ -178,9 +220,9 @@ export function Features() {
           tone="sea"
           pos="10% 40%"
           title="Live, recountable tally"
-          body="Results are read straight from the Midnight ledger, so anyone can check the count themselves."
+          body="Read straight from the Midnight ledger as ballots land, so anyone can check the count themselves."
         >
-          <TallyMini />
+          <TallyMini tally={live.tally} />
         </Feature>
         <Feature
           tone="sea"
@@ -188,15 +230,15 @@ export function Features() {
           title="Membership without names"
           body="Voters prove they sit somewhere in the roster without revealing which entry is theirs."
         >
-          <RosterMini />
+          <RosterMini tally={live.tally} />
         </Feature>
         <Feature
           tone="sea"
           pos="100% 30%"
-          title="Double-vote guard"
-          body="Each ballot spends a one-time nullifier. Try to vote again and the contract refuses."
+          title="Every action on the record"
+          body="Enrolments and ballots are public transactions. A second ballot from the same member is refused."
         >
-          <GuardMini />
+          <HistoryMini events={live.events} failed={live.status === 'error' || live.historyFailed} />
         </Feature>
         <Feature
           wide

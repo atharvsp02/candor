@@ -9,10 +9,14 @@ import { UseCases } from './UseCases';
 import { Faq } from './Faq';
 import { Closing, SiteFooter } from './Closing';
 import { Hatch } from './common';
+import { POLL_ADDRESS } from '../live/indexer';
+import { useLivePoll } from '../live/useLivePoll';
 import '../styles/dash.css';
 import '../styles/site.css';
 
 export default function Landing() {
+  const live = useLivePoll(POLL_ADDRESS);
+
   useEffect(() => {
     document.title = 'Candor · Anonymous polls on Midnight';
   }, []);
@@ -21,13 +25,13 @@ export default function Landing() {
     <div className="site">
       <SiteNav />
       <main className="frame">
-        <Hero />
+        <Hero live={live} />
         <Hatch />
         <Facts />
         <Hatch />
         <Problem />
         <Hatch />
-        <Features />
+        <Features live={live} />
         <Hatch />
         <Benefits />
         <Hatch />

@@ -1,7 +1,7 @@
 import type { Status } from '../hooks/useMidnight';
 import { BrandMark } from '../ui/Brand';
 import { Check, Copy, Link, Power, Wallet } from '../ui/icons';
-import { middle } from '../ui/format';
+import { middle, titleCase } from '../ui/format';
 
 type Props = {
   status: Status;
@@ -13,8 +13,6 @@ type Props = {
   onConnect: () => void;
   onDisconnect: () => void;
 };
-
-const title = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 export function Topbar({
   status,
@@ -45,7 +43,7 @@ export function Topbar({
       <div className="top-end">
         <span className="chip chip-network">
           <span className="dot dot-live" />
-          {title(networkId)}
+          {titleCase(networkId)}
         </span>
 
         {status.kind === 'connected' ? (

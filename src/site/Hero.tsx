@@ -1,17 +1,44 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Dashboard } from '../app/Dashboard';
+import { Dashboard, type DashboardProps } from '../app/Dashboard';
+import { chainActivity, latestFirst } from '../app/activity';
+import { NETWORK_ID, POLL_ADDRESS } from '../live/indexer';
+import type { LivePoll } from '../live/useLivePoll';
 import { ChevronRight } from '../ui/icons';
 import { Art, Hatch } from './common';
-import { demoDashboard } from './demo';
 
 const STAGE_WIDTH = 1180;
 const STAGE_HEIGHT = 820;
 const VISIBLE = 640;
 
-function Showcase() {
+const noop = () => undefined;
+
+function Showcase({ live }: { live: LivePoll }) {
   const frame = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.86);
-  const demo = useMemo(demoDashboard, []);
+
+  const dashboard = useMemo<DashboardProps>(
+    () => ({
+      status: { kind: 'disconnected' },
+      tally: live.tally,
+      privacy: null,
+      busy: null,
+      notice: null,
+      contractAddress: POLL_ADDRESS,
+      networkId: NETWORK_ID,
+      proverUri: '',
+      shareUrl: POLL_ADDRESS ? `${window.location.origin}/app?poll=${POLL_ADDRESS}` : '',
+      activity: live.events ? latestFirst(chainActivity(live.events)) : null,
+      activityFailed: live.historyFailed,
+      preview: true,
+      onConnect: noop,
+      onDisconnect: noop,
+      onCreatePoll: noop,
+      onEnrol: noop,
+      onVote: noop,
+      onRefresh: noop,
+    }),
+    [live],
+  );
 
   useLayoutEffect(() => {
     const element = frame.current;
@@ -32,14 +59,14 @@ function Showcase() {
           inert
           aria-hidden="true"
         >
-          <Dashboard {...demo} />
+          <Dashboard {...dashboard} />
         </div>
       </div>
     </Art>
   );
 }
 
-export function Hero() {
+export function Hero({ live }: { live: LivePoll }) {
   return (
     <>
       <section className="hero" id="top">
@@ -63,7 +90,7 @@ export function Hero() {
         </div>
       </section>
       <Hatch />
-      <Showcase />
+      <Showcase live={live} />
     </>
   );
 }
