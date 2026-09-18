@@ -265,6 +265,10 @@ keys into `public/`, because the browser fetches them from the app's own origin 
 
 A poll is a contract, so its address is the share link: `/app?poll=<address>` opens that poll directly
 (older `/?poll=<address>` links are redirected there).
+
+The landing page is not a mock-up. It reads `VITE_CONTRACT_ADDRESS` from the indexer — the tally, the
+roster and the last transactions on the contract are the live ones, and the preview above the fold is
+the dashboard component itself.
 With no poll configured, the page offers to deploy a new one through the connected wallet.
 
 ### Wallets
