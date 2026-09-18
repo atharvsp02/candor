@@ -63,7 +63,7 @@ export function BallotPanel(props: Props) {
   const membership = !connected ? 'Wallet needed' : enrolled ? 'In the roster' : 'Not enrolled';
 
   return (
-    <section className="card ballot" id="ballot" aria-labelledby="ballot-title">
+    <section className="card ballot" aria-labelledby="ballot-title">
       <header className="ballot-head">
         <h3 id="ballot-title">Cast a ballot</h3>
         <span className="chip">

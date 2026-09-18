@@ -31,7 +31,7 @@ export function Overview({
   const canEnrol = connected && hasPoll && busy === null && !enrolled;
 
   return (
-    <section className="overview" id="overview">
+    <section className="overview">
       <article className="card stat">
         <header className="stat-head">
           <span>Members enrolled</span>

@@ -43,7 +43,7 @@ export function PrivacyCard({ privacy, tally, connected }: Props) {
       : 'Connect a wallet to read back exactly what this poll has published about you.';
 
   return (
-    <section className="card privacy" id="privacy" aria-labelledby="privacy-title">
+    <section className="card privacy" aria-labelledby="privacy-title">
       <header className="card-head">
         <h3 id="privacy-title">What the chain knows about you</h3>
         <span className="chip">

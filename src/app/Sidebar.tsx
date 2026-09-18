@@ -1,13 +1,14 @@
-import { useState } from 'react';
 import { Brand } from '../ui/Brand';
 import { Ballot, Book, ChevronRight, Code, Grid, Home, Layers, Plus, Shield } from '../ui/icons';
 import { CONTRACT_SOURCE_URL, REPO_URL } from '../ui/format';
 
-const SECTIONS = [
-  { href: '#overview', label: 'Overview', icon: Grid },
-  { href: '#ballot', label: 'Ballot', icon: Ballot },
-  { href: '#privacy', label: 'Privacy', icon: Shield },
-  { href: '#details', label: 'Poll details', icon: Layers },
+import type { View } from './Dashboard';
+
+const SECTIONS: { view: View; label: string; icon: typeof Grid }[] = [
+  { view: 'overview', label: 'Overview', icon: Grid },
+  { view: 'ballot', label: 'Ballot', icon: Ballot },
+  { view: 'privacy', label: 'Privacy', icon: Shield },
+  { view: 'details', label: 'Poll details', icon: Layers },
 ];
 
 const RESOURCES = [
@@ -17,14 +18,13 @@ const RESOURCES = [
 ];
 
 type Props = {
+  view: View;
   connected: boolean;
   busy: string | null;
   onCreatePoll: () => void;
 };
 
-export function Sidebar({ connected, busy, onCreatePoll }: Props) {
-  const [active, setActive] = useState(SECTIONS[0].href);
-
+export function Sidebar({ view, connected, busy, onCreatePoll }: Props) {
   return (
     <aside className="dash-side">
       <div className="side-brand">
@@ -33,18 +33,22 @@ export function Sidebar({ connected, busy, onCreatePoll }: Props) {
 
       <nav className="side-nav" aria-label="Poll">
         <span className="side-label">Poll</span>
-        {SECTIONS.map(({ href, label, icon: Icon }) => (
-          <a
-            key={href}
-            href={href}
-            className={active === href ? 'side-link is-active' : 'side-link'}
-            onClick={() => setActive(href)}
-          >
-            <Icon size={16} />
-            <span>{label}</span>
-            {active === href && <ChevronRight size={14} className="side-chevron" />}
-          </a>
-        ))}
+        {SECTIONS.map((section) => {
+          const Icon = section.icon;
+          const active = view === section.view;
+          return (
+            <a
+              key={section.view}
+              href={`#${section.view}`}
+              aria-current={active ? 'page' : undefined}
+              className={active ? 'side-link is-active' : 'side-link'}
+            >
+              <Icon size={16} />
+              <span>{section.label}</span>
+              {active && <ChevronRight size={14} className="side-chevron" />}
+            </a>
+          );
+        })}
 
         <span className="side-label">Resources</span>
         {RESOURCES.map(({ href, label, icon: Icon, external }) => (

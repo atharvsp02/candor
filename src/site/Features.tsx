@@ -6,6 +6,7 @@ import type { LivePoll } from '../live/useLivePoll';
 import { EVENT_TITLES } from '../app/activity';
 import { Ballot, Check, Cpu, Key, Plus, Users, Wallet } from '../ui/icons';
 import { middle, optionLabel, OPTION_COLORS, percent, ROSTER_CAPACITY, titleCase, when } from '../ui/format';
+import { CIRCUITS } from '../ui/circuits';
 import { Art, SectionHead, type Tone } from './common';
 
 type FeatureProps = {
@@ -160,14 +161,6 @@ function HistoryMini({ events, failed }: { events: readonly ChainEvent[] | null;
     </ul>
   );
 }
-
-const CIRCUITS = [
-  { name: 'enroll', args: '()', kind: 'impure', result: 'roster.insert(leaf)', note: '+1 member' },
-  { name: 'vote', args: '(choice)', kind: 'impure', result: 'spent.insert(tag)', note: '+1 ballot' },
-  { name: 'commitment', args: '(sk)', kind: 'pure', result: 'persistentHash', note: 'member:v1' },
-  { name: 'nullifier', args: '(sk)', kind: 'pure', result: 'persistentHash', note: 'nullifier:v1' },
-  { name: 'checkRoot', args: '(root)', kind: 'ledger', result: 'MerkleTree<10>', note: 'depth 10' },
-];
 
 function CircuitsMini() {
   return (

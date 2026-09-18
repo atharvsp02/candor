@@ -26,7 +26,7 @@ export function DetailsCard({
   const invite = shareUrl.replace(/^https?:\/\//, '');
 
   return (
-    <section className="card details" id="details" aria-labelledby="details-title">
+    <section className="card details" aria-labelledby="details-title">
       <header className="card-head">
         <h3 id="details-title">Poll details</h3>
       </header>
@@ -70,7 +70,7 @@ export function DetailsCard({
         </div>
       </dl>
 
-      <div className="activity" id="activity">
+      <div className="activity">
         <span className="activity-title">Activity</span>
         {activity === null && activityFailed ? (
           <p className="activity-empty">The poll’s history could not be read from the indexer just now.</p>

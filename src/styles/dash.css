@@ -1006,6 +1006,103 @@
   color: var(--dim);
 }
 
+.circuit-list {
+  display: grid;
+  margin: 0;
+  padding: 6px 18px;
+  list-style: none;
+}
+
+.circuit-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.circuit-list li:last-child {
+  border-bottom: 0;
+}
+
+.circuit-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+}
+
+.circuit-list code {
+  font-size: 12.5px;
+  color: #fff;
+}
+
+.circuit-list p {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.contract-facts {
+  margin: 0 18px;
+  padding: 12px 0 16px;
+}
+
+.model-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.model-cols article {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 18px;
+}
+
+.model-cols article + article {
+  border-left: 1px solid var(--line);
+}
+
+.model-cols h4 {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.model-cols p {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.model-cols strong {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.model-cols ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.model-cols li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.model-cols li svg {
+  flex: none;
+  color: #8d8d8d;
+}
+
 @container dash (max-width: 1080px) {
   .dash-row {
     grid-template-columns: minmax(0, 1fr);
@@ -1036,6 +1133,60 @@
 
   .overview {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container dash (max-width: 880px) {
+  .circuit-list {
+    display: grid;
+    margin: 0;
+    padding: 6px 18px;
+    list-style: none;
+  }
+
+  .circuit-list li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+
+  .circuit-list li:last-child {
+    border-bottom: 0;
+  }
+
+  .circuit-dot {
+    width: 10px;
+    height: 10px;
+    margin-top: 5px;
+    border-radius: 50%;
+  }
+
+  .circuit-list code {
+    font-size: 12.5px;
+    color: #fff;
+  }
+
+  .circuit-list p {
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  .contract-facts {
+    margin: 0 18px;
+    padding: 12px 0 16px;
+  }
+
+  .model-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .model-cols article + article {
+    border-left: 0;
+    border-top: 1px solid var(--line);
   }
 }
 

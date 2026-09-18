@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Status } from '../hooks/useMidnight';
 import type { PrivacyView, TallyView } from '../view';
 import { Sidebar } from './Sidebar';
@@ -8,7 +8,18 @@ import { TallyCard, EmptyPoll } from './TallyCard';
 import { BallotPanel } from './BallotPanel';
 import { PrivacyCard } from './PrivacyCard';
 import { DetailsCard } from './DetailsCard';
+import { PrivacyModel } from './PrivacyModel';
+import { ContractCard } from './ContractCard';
 import { useCopy } from './useCopy';
+
+export const VIEWS = ['overview', 'ballot', 'privacy', 'details'] as const;
+
+export type View = (typeof VIEWS)[number];
+
+const readView = (): View => {
+  const hash = window.location.hash.replace('#', '');
+  return (VIEWS as readonly string[]).includes(hash) ? (hash as View) : 'overview';
+};
 
 export type ActivityEntry = {
   readonly id: string;
@@ -42,14 +53,60 @@ export type DashboardProps = {
 export function Dashboard(props: DashboardProps) {
   const { status, tally, privacy, busy, notice, contractAddress, preview } = props;
   const [choice, setChoice] = useState(0);
+  const [view, setView] = useState<View>(() => (preview ? 'overview' : readView()));
   const { copied, copy } = useCopy();
   const connected = status.kind === 'connected';
   const hasPoll = Boolean(contractAddress);
 
+  useEffect(() => {
+    if (preview) return;
+    const update = () => setView(readView());
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, [preview]);
+
+  const ballot = (
+    <BallotPanel
+      tally={tally}
+      privacy={privacy}
+      connected={connected}
+      hasPoll={hasPoll}
+      busy={busy}
+      notice={notice}
+      choice={choice}
+      proverUri={props.proverUri}
+      onChoose={setChoice}
+      onConnect={props.onConnect}
+      onEnrol={props.onEnrol}
+      onVote={props.onVote}
+    />
+  );
+
+  const results = hasPoll ? (
+    <TallyCard tally={tally} choice={choice} onChoose={setChoice} onRefresh={props.onRefresh} />
+  ) : (
+    <EmptyPoll connected={connected} busy={busy} onConnect={props.onConnect} onCreatePoll={props.onCreatePoll} />
+  );
+
+  const privacyCard = <PrivacyCard privacy={privacy} tally={tally} connected={connected} />;
+
+  const details = (
+    <DetailsCard
+      contractAddress={contractAddress}
+      shareUrl={props.shareUrl}
+      networkId={props.networkId}
+      options={tally?.counts.length ?? 0}
+      activity={props.activity}
+      activityFailed={props.activityFailed ?? false}
+      copied={copied}
+      onCopy={copy}
+    />
+  );
+
   return (
     <div className={preview ? 'dash is-preview' : 'dash'}>
       <div className="dash-shell">
-        <Sidebar connected={connected} busy={busy} onCreatePoll={props.onCreatePoll} />
+        <Sidebar view={view} connected={connected} busy={busy} onCreatePoll={props.onCreatePoll} />
 
         <div className="dash-main">
           <Topbar
@@ -70,58 +127,50 @@ export function Dashboard(props: DashboardProps) {
               </div>
             )}
 
-            <Overview
-              tally={tally}
-              privacy={privacy}
-              connected={connected}
-              hasPoll={hasPoll}
-              busy={busy}
-              copied={copied === 'invite'}
-              onEnrol={props.onEnrol}
-              onCopyInvite={() => copy('invite', props.shareUrl)}
-              onRefresh={props.onRefresh}
-            />
-
-            <div className="dash-row dash-row-main">
-              {hasPoll ? (
-                <TallyCard tally={tally} choice={choice} onChoose={setChoice} onRefresh={props.onRefresh} />
-              ) : (
-                <EmptyPoll
+            {view === 'overview' && (
+              <>
+                <Overview
+                  tally={tally}
+                  privacy={privacy}
                   connected={connected}
+                  hasPoll={hasPoll}
                   busy={busy}
-                  onConnect={props.onConnect}
-                  onCreatePoll={props.onCreatePoll}
+                  copied={copied === 'invite'}
+                  onEnrol={props.onEnrol}
+                  onCopyInvite={() => copy('invite', props.shareUrl)}
+                  onRefresh={props.onRefresh}
                 />
-              )}
-              <BallotPanel
-                tally={tally}
-                privacy={privacy}
-                connected={connected}
-                hasPoll={hasPoll}
-                busy={busy}
-                notice={notice}
-                choice={choice}
-                proverUri={props.proverUri}
-                onChoose={setChoice}
-                onConnect={props.onConnect}
-                onEnrol={props.onEnrol}
-                onVote={props.onVote}
-              />
-            </div>
+                <div className="dash-row dash-row-main">
+                  {results}
+                  {ballot}
+                </div>
+                <div className="dash-row dash-row-foot">
+                  {privacyCard}
+                  {details}
+                </div>
+              </>
+            )}
 
-            <div className="dash-row dash-row-foot">
-              <PrivacyCard privacy={privacy} tally={tally} connected={connected} />
-              <DetailsCard
-                contractAddress={contractAddress}
-                shareUrl={props.shareUrl}
-                networkId={props.networkId}
-                options={tally?.counts.length ?? 0}
-                activity={props.activity}
-                activityFailed={props.activityFailed ?? false}
-                copied={copied}
-                onCopy={copy}
-              />
-            </div>
+            {view === 'ballot' && (
+              <div className="dash-row dash-row-main">
+                {results}
+                {ballot}
+              </div>
+            )}
+
+            {view === 'privacy' && (
+              <>
+                {privacyCard}
+                <PrivacyModel />
+              </>
+            )}
+
+            {view === 'details' && (
+              <div className="dash-row dash-row-foot">
+                {details}
+                <ContractCard />
+              </div>
+            )}
           </main>
         </div>
       </div>
