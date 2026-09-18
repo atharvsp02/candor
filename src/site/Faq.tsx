@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus } from '../ui/icons';
-import { SectionHead } from './common';
+import { SectionHead, reveal } from './common';
 
 const FAQS = [
   {
@@ -39,7 +39,7 @@ export function Faq() {
         {FAQS.map((item, index) => {
           const expanded = open === index;
           return (
-            <div key={item.q} className={expanded ? 'faq-item is-open' : 'faq-item'}>
+            <div key={item.q} className={expanded ? 'faq-item is-open' : 'faq-item'} {...reveal(index)}>
               <h3>
                 <button
                   id={`faq-q-${index}`}

@@ -1,7 +1,7 @@
 import { Ballot, Pulse, Shield, Users } from '../ui/icons';
 import type { CSSProperties } from 'react';
 import { optionLabel, OPTION_COLORS } from '../ui/format';
-import { Art, SectionHead, type Tone } from './common';
+import { Art, SectionHead, reveal, type Tone } from './common';
 
 const USES = [
   {
@@ -59,8 +59,8 @@ export function UseCases() {
     <section className="block" id="use-cases">
       <SectionHead kicker="Use cases" title="For the questions people won’t answer out loud" />
       <div className="grid-3 uses">
-        {USES.map(({ tone, pos, question, who, role, icon: Icon }) => (
-          <article key={question} className="use">
+        {USES.map(({ tone, pos, question, who, role, icon: Icon }, index) => (
+          <article key={question} className="use" {...reveal(index % 3)}>
             <Art tone={tone} pos={pos} zoom="auto 260%" className="use-art">
               <div className="use-panel">
                 <span className="use-kicker">Sample ballot</span>

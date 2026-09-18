@@ -7,7 +7,7 @@ import { EVENT_TITLES } from '../app/activity';
 import { Ballot, Check, Cpu, Key, Plus, Users, Wallet } from '../ui/icons';
 import { middle, optionLabel, OPTION_COLORS, percent, ROSTER_CAPACITY, titleCase, when } from '../ui/format';
 import { CIRCUITS } from '../ui/circuits';
-import { Art, SectionHead, type Tone } from './common';
+import { Art, SectionHead, reveal, type Tone } from './common';
 
 type FeatureProps = {
   tone: Tone;
@@ -15,12 +15,13 @@ type FeatureProps = {
   title: string;
   body: string;
   wide?: boolean;
+  order: number;
   children: ReactNode;
 };
 
-function Feature({ tone, pos, title, body, wide, children }: FeatureProps) {
+function Feature({ tone, pos, title, body, wide, order, children }: FeatureProps) {
   return (
-    <article className={wide ? 'feature feature-wide' : 'feature'}>
+    <article className={wide ? 'feature feature-wide' : 'feature'} {...reveal(order)}>
       <Art tone={tone} pos={pos} zoom="auto 260%" className="feature-art">
         <div className="mini">{children}</div>
       </Art>
@@ -210,6 +211,7 @@ export function Features({ live }: { live: LivePoll }) {
       <SectionHead kicker="Solution" title="One member. One ballot. Zero trace." />
       <div className="features">
         <Feature
+          order={0}
           tone="sea"
           pos="10% 40%"
           title="Live, recountable tally"
@@ -218,6 +220,7 @@ export function Features({ live }: { live: LivePoll }) {
           <TallyMini tally={live.tally} />
         </Feature>
         <Feature
+          order={1}
           tone="sea"
           pos="70% 60%"
           title="Membership without names"
@@ -226,6 +229,7 @@ export function Features({ live }: { live: LivePoll }) {
           <RosterMini tally={live.tally} />
         </Feature>
         <Feature
+          order={2}
           tone="sea"
           pos="100% 30%"
           title="Every action on the record"
@@ -234,6 +238,7 @@ export function Features({ live }: { live: LivePoll }) {
           <HistoryMini events={live.events} failed={live.status === 'error' || live.historyFailed} />
         </Feature>
         <Feature
+          order={0}
           wide
           tone="gold"
           pos="20% 70%"
@@ -243,6 +248,7 @@ export function Features({ live }: { live: LivePoll }) {
           <CircuitsMini />
         </Feature>
         <Feature
+          order={1}
           wide
           tone="gold"
           pos="85% 35%"

@@ -11,11 +11,13 @@ import { Closing, SiteFooter } from './Closing';
 import { Hatch } from './common';
 import { POLL_ADDRESS } from '../live/indexer';
 import { useLivePoll } from '../live/useLivePoll';
+import { useReveal } from './useReveal';
 import '../styles/dash.css';
 import '../styles/site.css';
 
 export default function Landing() {
   const live = useLivePoll(POLL_ADDRESS);
+  useReveal('.site');
 
   useEffect(() => {
     document.title = 'Candor · Anonymous polls on Midnight';

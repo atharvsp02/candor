@@ -10,8 +10,13 @@ type HeadProps = {
   children?: ReactNode;
 };
 
+export const reveal = (index = 0) => ({
+  'data-reveal': '',
+  style: { '--i': index } as CSSProperties,
+});
+
 export const SectionHead = ({ kicker, title, children }: HeadProps) => (
-  <header className="section-head">
+  <header className="section-head" {...reveal()}>
     <span className="kicker">{kicker}</span>
     <h2>{title}</h2>
     {children}
@@ -23,14 +28,22 @@ type ArtProps = {
   pos?: string;
   zoom?: string;
   className?: string;
+  reveal?: number;
   children?: ReactNode;
 };
 
-export const Art = ({ tone, pos, zoom, className, children }: ArtProps) => (
+export const Art = ({ tone, pos, zoom, className, reveal: order, children }: ArtProps) => (
   <div
     className={className ? `art ${className}` : 'art'}
     data-tone={tone}
-    style={{ ...(pos && { '--pos': pos }), ...(zoom && { '--zoom': zoom }) } as CSSProperties}
+    {...(order !== undefined && { 'data-reveal': '' })}
+    style={
+      {
+        ...(pos && { '--pos': pos }),
+        ...(zoom && { '--zoom': zoom }),
+        ...(order !== undefined && { '--i': order }),
+      } as CSSProperties
+    }
   >
     {children}
   </div>

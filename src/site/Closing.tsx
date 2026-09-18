@@ -10,7 +10,7 @@ const NETWORK = import.meta.env.VITE_NETWORK_ID ?? 'preprod';
 export function Closing() {
   return (
     <section className="closing-wrap">
-      <Art tone="ash" pos="50% 40%" className="closing">
+      <Art tone="ash" pos="50% 40%" className="closing" reveal={0}>
         <h2>
           Ask the question everyone is avoiding.
           <br />

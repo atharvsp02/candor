@@ -1,5 +1,5 @@
 import { CheckCircle, ChevronRight, Minus } from '../ui/icons';
-import { Art, Glyph, SectionHead, type GlyphName, type Tone } from './common';
+import { Art, Glyph, SectionHead, reveal, type GlyphName, type Tone } from './common';
 
 const BENEFITS: { glyph: GlyphName; tone: Tone; pos: string; title: string; body: string }[] = [
   {
@@ -60,8 +60,8 @@ export function Benefits() {
     <section className="block" id="benefits">
       <SectionHead kicker="Benefits" title="Privacy you can verify, not just trust" />
       <div className="grid-3">
-        {BENEFITS.map((benefit) => (
-          <article key={benefit.title} className="icon-card">
+        {BENEFITS.map((benefit, index) => (
+          <article key={benefit.title} className="icon-card" {...reveal(index)}>
             <Art tone={benefit.tone} pos={benefit.pos} zoom="auto 240%" className="icon-card-art">
               <div className="icon-card-panel">
                 <Glyph name={benefit.glyph} tone={benefit.tone} />
@@ -83,7 +83,7 @@ export function Compare() {
     <section className="block" id="compare">
       <SectionHead kicker="Comparison" title="Typical polls vs Candor" />
       <div className="compare">
-        <div className="compare-col">
+        <div className="compare-col" {...reveal(0)}>
           <Art tone="sea" pos="30% 20%" zoom="220% auto" className="compare-head">
             <span>Typical polls</span>
           </Art>
@@ -98,7 +98,7 @@ export function Compare() {
             ))}
           </ul>
         </div>
-        <div className="compare-col is-ours">
+        <div className="compare-col is-ours" {...reveal(1)}>
           <Art tone="ember" pos="60% 60%" zoom="220% auto" className="compare-head">
             <span>Candor</span>
           </Art>
@@ -122,7 +122,7 @@ export function Steps() {
       <SectionHead kicker="How it works" title="Three steps to a private ballot" />
       <div className="grid-3">
         {STEPS.map((step, index) => (
-          <article key={step.title} className="icon-card">
+          <article key={step.title} className="icon-card" {...reveal(index)}>
             <Art tone="dusk" pos={step.pos} zoom="auto 240%" className="icon-card-art">
               <div className="icon-card-panel">
                 <Glyph name={step.glyph} tone="dusk" />
@@ -136,7 +136,7 @@ export function Steps() {
           </article>
         ))}
       </div>
-      <div className="block-cta">
+      <div className="block-cta" {...reveal(1)}>
         <a className="btn btn-light" href="/app">
           Launch app
           <ChevronRight size={16} className="chev" />

@@ -12,6 +12,14 @@ export const NAV_LINKS = [
 
 export function SiteNav() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 12);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -21,7 +29,7 @@ export function SiteNav() {
   }, [open]);
 
   return (
-    <header className={open ? 'site-nav is-open' : 'site-nav'}>
+    <header className={['site-nav', open && 'is-open', scrolled && 'is-scrolled'].filter(Boolean).join(' ')}>
       <div className="nav-inner">
         <Brand />
 

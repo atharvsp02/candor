@@ -72,9 +72,8 @@ export function Hero({ live }: { live: LivePoll }) {
       <section className="hero" id="top">
         <span className="kicker kicker-quiet">Zero-knowledge polls on Midnight</span>
         <h1>
-          Every vote counted.
-          <br />
-          No voter revealed.
+          <span>Every vote counted.</span>
+          <span>No voter revealed.</span>
         </h1>
         <p className="hero-sub">
           Prove you belong, vote exactly once, and stay anonymous. Not even the poll&rsquo;s creator can see who voted.

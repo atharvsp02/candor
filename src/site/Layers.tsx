@@ -1,6 +1,6 @@
 import { CheckCircle, ChevronRight } from '../ui/icons';
 import { CONTRACT_SOURCE_URL, REPO_URL } from '../ui/format';
-import { Art, SectionHead, type Tone } from './common';
+import { Art, SectionHead, reveal, type Tone } from './common';
 
 const LAYERS: {
   tone: Tone;
@@ -61,8 +61,8 @@ export function Layers() {
     <section className="block" id="privacy">
       <SectionHead kicker="Privacy model" title="What is public, and what stays yours" />
       <div className="layers">
-        {LAYERS.map((layer) => (
-          <article key={layer.label} className={layer.badge ? 'layer is-featured' : 'layer'}>
+        {LAYERS.map((layer, index) => (
+          <article key={layer.label} className={layer.badge ? 'layer is-featured' : 'layer'} {...reveal(index)}>
             <Art tone={layer.tone} pos={layer.pos} zoom="260% auto" className="layer-head">
               <span>{layer.label}</span>
               {layer.badge && <em>{layer.badge}</em>}
