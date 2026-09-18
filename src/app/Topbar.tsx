@@ -1,7 +1,7 @@
 import type { Status } from '../hooks/useMidnight';
 import { BrandMark } from '../ui/Brand';
 import { Check, Copy, Link, Power, Wallet } from '../ui/icons';
-import { middle, titleCase } from '../ui/format';
+import { middle } from '../ui/format';
 
 type Props = {
   status: Status;
@@ -35,17 +35,13 @@ export function Topbar({
         <span className="poll-field-value">
           {contractAddress ? middle(contractAddress, 12, 8) : 'No poll selected'}
         </span>
+        <span className="poll-field-net">{networkId}</span>
         <button className="kbd" onClick={onCopy} disabled={!shareUrl} aria-label="Copy invite link">
           {copied ? <Check size={12} /> : <Copy size={12} />}
         </button>
       </div>
 
       <div className="top-end">
-        <span className="chip chip-network">
-          <span className="dot dot-live" />
-          {titleCase(networkId)}
-        </span>
-
         {status.kind === 'connected' ? (
           <div className="wallet-chip">
             <Wallet size={15} />

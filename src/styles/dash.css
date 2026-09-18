@@ -205,9 +205,15 @@
   margin-left: auto;
 }
 
-.chip-network {
-  border: 1px solid var(--line-strong);
-  background: transparent;
+.poll-field-net {
+  flex: none;
+  padding-left: 10px;
+  border-left: 1px solid var(--line-strong);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
 }
 
 .wallet-chip {
@@ -1191,7 +1197,7 @@
 }
 
 @container dash (max-width: 600px) {
-  .chip-network,
+  .poll-field-net,
   .wallet-chip code {
     display: none;
   }
