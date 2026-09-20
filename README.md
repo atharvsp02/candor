@@ -4,6 +4,9 @@
 
 > Anonymous polling where the anonymity is proven, not promised. One member, one ballot, enforced by a zero-knowledge proof.
 
+**Live demo:** [candor-self.vercel.app](https://candor-self.vercel.app) — the landing page explains it, and
+[`/app`](https://candor-self.vercel.app/app) opens the poll running on Midnight Preprod.
+
 ![Candor](docs/interface-hero.jpg)
 
 ## Contract Address
