@@ -7,6 +7,10 @@
 **Live demo:** [candor-self.vercel.app](https://candor-self.vercel.app) — the landing page explains it, and
 [`/app`](https://candor-self.vercel.app/app) opens the poll running on Midnight Preprod.
 
+**Demo video:** [wallet connect, enrolment and a ballot on Preprod](https://drive.google.com/file/d/1nB7RrsJC5um1R07RGWUv-DnH1BbdcbnE/view?usp=sharing)
+(1:52) — connecting 1AM, enrolling a member, casting a ballot, and reading the commitment and spent
+nullifier back off the chain.
+
 ![Candor](docs/interface-hero.jpg)
 
 ## Contract Address
