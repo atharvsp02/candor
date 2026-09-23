@@ -58,6 +58,7 @@ export default function AppPage() {
       status={m.status}
       tally={tally ?? live.tally}
       privacy={privacy}
+      eligibility={m.eligibility}
       busy={m.busy}
       notice={m.notice}
       contractAddress={m.contractAddress}
@@ -68,7 +69,8 @@ export default function AppPage() {
       activityFailed={live.historyFailed}
       onConnect={m.connect}
       onDisconnect={m.disconnect}
-      onCreatePoll={m.createPoll}
+      onCreatePoll={() => m.createPoll()}
+      onIssue={() => m.issueCredential()}
       onEnrol={m.enrol}
       onVote={m.vote}
       onRefresh={refresh}

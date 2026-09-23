@@ -29,6 +29,8 @@ export interface DeploymentRecord {
   address: string;
   deployedAt: string;
   deployer: string;
+  /** Hex issuer key for this poll. Whoever holds it can hand out credentials. */
+  issuerSecret?: string;
 }
 
 export interface WalletRecord {
@@ -350,7 +352,7 @@ export function recordDeployment(
   network: NetworkId,
   address: string,
   deployer: string,
-  opts: FsOptions = {},
+  opts: FsOptions & { issuerSecret?: string } = {},
 ): void {
   const cwd = opts.cwd ?? process.cwd();
   const existing = loadState({ cwd });
@@ -362,7 +364,12 @@ export function recordDeployment(
   };
   next.deployments = {
     ...next.deployments,
-    [network]: { address, deployer, deployedAt: new Date().toISOString() },
+    [network]: {
+      address,
+      deployer,
+      deployedAt: new Date().toISOString(),
+      ...(opts.issuerSecret ? { issuerSecret: opts.issuerSecret } : {}),
+    },
   };
   saveState(next, { cwd });
 }

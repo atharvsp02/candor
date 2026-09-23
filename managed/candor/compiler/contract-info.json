@@ -40,6 +40,75 @@
       }
     },
     {
+      "name": "issuerKeyOf",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "secret",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "credentialLeaf",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "holder",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "tier",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 255
+          }
+        },
+        {
+          "name": "blind",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "issue",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "leaf",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
       "name": "enroll",
       "pure": false,
       "proof": true,
@@ -78,6 +147,76 @@
       "result type": {
         "type-name": "Bytes",
         "length": 32
+      }
+    },
+    {
+      "name": "memberTier",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Uint",
+        "maxval": 255
+      }
+    },
+    {
+      "name": "credentialBlind",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "credentialPath",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Struct",
+        "name": "MerkleTreePath",
+        "elements": [
+          {
+            "name": "leaf",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          },
+          {
+            "name": "path",
+            "type": {
+              "type-name": "Vector",
+              "length": 10,
+              "type": {
+                "type-name": "Struct",
+                "name": "MerkleTreePathEntry",
+                "elements": [
+                  {
+                    "name": "sibling",
+                    "type": {
+                      "type-name": "Struct",
+                      "name": "MerkleTreeDigest",
+                      "elements": [
+                        {
+                          "name": "field",
+                          "type": {
+                            "type-name": "Field"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "goes_left",
+                    "type": {
+                      "type-name": "Boolean"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
       }
     },
     {
@@ -131,13 +270,22 @@
           }
         ]
       }
+    },
+    {
+      "name": "issuerSecret",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
     }
   ],
   "contracts": [
   ],
   "ledger": [
     {
-      "name": "roster",
+      "name": "credentials",
       "index": 0,
       "exported": true,
       "storage": "MerkleTree",
@@ -148,8 +296,45 @@
       }
     },
     {
-      "name": "members",
+      "name": "issuer",
       "index": 1,
+      "exported": true,
+      "storage": "Cell",
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "minTier",
+      "index": 2,
+      "exported": true,
+      "storage": "Cell",
+      "type": {
+        "type-name": "Uint",
+        "maxval": 255
+      }
+    },
+    {
+      "name": "issued",
+      "index": 3,
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "roster",
+      "index": 4,
+      "exported": true,
+      "storage": "MerkleTree",
+      "depth": 10,
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "members",
+      "index": 5,
       "exported": true,
       "storage": "Set",
       "type": {
@@ -159,7 +344,7 @@
     },
     {
       "name": "spent",
-      "index": 2,
+      "index": 6,
       "exported": true,
       "storage": "Set",
       "type": {
@@ -169,7 +354,7 @@
     },
     {
       "name": "tally",
-      "index": 3,
+      "index": 7,
       "exported": true,
       "storage": "Map",
       "key": {
@@ -182,7 +367,7 @@
     },
     {
       "name": "choices",
-      "index": 4,
+      "index": 8,
       "exported": true,
       "storage": "Cell",
       "type": {
@@ -192,13 +377,13 @@
     },
     {
       "name": "enrolled",
-      "index": 5,
+      "index": 9,
       "exported": true,
       "storage": "Counter"
     },
     {
       "name": "cast",
-      "index": 6,
+      "index": 10,
       "exported": true,
       "storage": "Counter"
     }

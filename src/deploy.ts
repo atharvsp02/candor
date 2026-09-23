@@ -29,6 +29,7 @@ const PRIVATE_STATE_ID = 'candorPrivateState';
 
 // Options on the ballot. Set CANDOR_OPTIONS at deploy time to change it.
 const OPTION_COUNT = BigInt(process.env.CANDOR_OPTIONS?.trim() || '3');
+const MIN_TIER = BigInt(process.env.CANDOR_MIN_TIER?.trim() || '1');
 
 // Upper bound on the DUST wait. A healthy local devnet produces DUST within
 // seconds of registration; anything approaching this means the node, the
@@ -89,7 +90,7 @@ if (!fs.existsSync(contractPath)) {
 }
 
 const Candor = await import(pathToFileURL(contractPath).href);
-const { witnesses, createPrivateState } = await import('./witnesses.js');
+const { witnesses, createPrivateState, withIssuer, issuerKeyOf } = await import('./witnesses.js');
 
 const CC = CompiledContract as any;
 const compiledContract = CC.withCompiledFileAssets(
@@ -154,7 +155,9 @@ async function main() {
   const walletCtx = await createWallet({ network, networkConfig, seed });
   const restoredCount = Object.values(walletCtx.restored).filter(Boolean).length;
   if (restoredCount > 0) {
-    console.log(`  Restored ${restoredCount}/3 child wallets from .midnight-wallet-state — sync will resume from saved point.`);
+    console.log(
+      `  Restored ${restoredCount}/3 child wallets from .midnight-wallet-state — sync will resume from saved point.`,
+    );
   }
 
   console.log('  Syncing with network...');
@@ -193,9 +196,7 @@ async function main() {
   if (network !== 'undeployed' && networkConfig.faucet) {
     // Same balance idiom used by check-balance.ts:
     //   state.unshielded.balances[unshieldedToken().raw] ?? 0n
-    const initialBalance = await Rx.firstValueFrom(walletCtx.wallet.state().pipe(
-      Rx.filter((s) => s.isSynced),
-    ));
+    const initialBalance = await Rx.firstValueFrom(walletCtx.wallet.state().pipe(Rx.filter((s) => s.isSynced)));
     const initialTNight = initialBalance.unshielded.balances[unshieldedToken().raw] ?? 0n;
     if (initialTNight === 0n) {
       console.log('─── Fund Wallet ────────────────────────────────────────────────\n');
@@ -312,20 +313,23 @@ async function main() {
   // settling). Earlier 2s retries caused CI flakes where attempt 2's /prove
   // hit the proof-server before it had drained attempt 1's state — 5s gives
   // it room to settle between attempts. 20 × 5 = 100s total budget.
+  const issuerState = withIssuer(createPrivateState());
+
   const MAX_RETRIES = 20;
   const RETRY_DELAY_MS = 5000;
   let deployed: Awaited<ReturnType<typeof deployContract>> | undefined;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      // args is the contract constructor's arguments — Candor's constructor
-      // takes the number of options on the ballot. initialPrivateState seeds
-      // the member secret that the witnesses read from.
+      // args is the contract constructor's arguments — the number of options on
+      // the ballot, the tier a credential must reach, and the hash of the issuer
+      // key. initialPrivateState seeds the secrets the witnesses read from; the
+      // issuer key itself never leaves this machine.
       deployed = await deployContract(providers, {
         compiledContract: compiledContract as any,
-        args: [OPTION_COUNT],
+        args: [OPTION_COUNT, MIN_TIER, issuerKeyOf(issuerState.issuerSecret!)],
         privateStateId: PRIVATE_STATE_ID,
-        initialPrivateState: createPrivateState(),
+        initialPrivateState: issuerState,
       });
       break;
     } catch (err: any) {
@@ -368,7 +372,9 @@ async function main() {
           if (attempt === 1) {
             console.log(`  Still generating DUST, retrying in ${RETRY_DELAY_MS / 1000}s...`);
           } else {
-            console.log(`  ⏳ DUST balance: ${dustBalance.toLocaleString()} (attempt ${attempt}/${MAX_RETRIES}); retrying in ${RETRY_DELAY_MS / 1000}s...`);
+            console.log(
+              `  ⏳ DUST balance: ${dustBalance.toLocaleString()} (attempt ${attempt}/${MAX_RETRIES}); retrying in ${RETRY_DELAY_MS / 1000}s...`,
+            );
           }
           await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
         } else {
@@ -388,7 +394,9 @@ async function main() {
   console.log('  ✅ Contract deployed successfully!\n');
   console.log(`  Contract Address: ${contractAddress}\n`);
 
-  recordDeployment(network, contractAddress, address.toString());
+  recordDeployment(network, contractAddress, address.toString(), {
+    issuerSecret: Buffer.from(issuerState.issuerSecret!).toString('hex'),
+  });
   console.log('  Saved to .midnight-state.json\n');
 
   await persistWalletState(network, walletCtx);

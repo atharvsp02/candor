@@ -1,3 +1,4 @@
+import type { Eligibility } from '../hooks/useMidnight';
 import type { PrivacyView, TallyView } from '../view';
 import { Globe, Lock } from '../ui/icons';
 import { middle } from '../ui/format';
@@ -5,6 +6,7 @@ import { middle } from '../ui/format';
 type Props = {
   privacy: PrivacyView | null;
   tally: TallyView | null;
+  eligibility: Eligibility | null;
   connected: boolean;
 };
 
@@ -32,7 +34,7 @@ function Row({ label, value, secret, tag, on }: RowProps) {
   );
 }
 
-export function PrivacyCard({ privacy, tally, connected }: Props) {
+export function PrivacyCard({ privacy, tally, eligibility, connected }: Props) {
   const enrolled = privacy?.enrolled === true;
   const voted = privacy?.voted === true;
 
@@ -66,6 +68,12 @@ export function PrivacyCard({ privacy, tally, connected }: Props) {
               on={enrolled}
             />
             <Row label="Nullifier" value={privacy?.nullifier} tag={voted ? 'spent' : 'unspent'} on={voted} />
+            <Row
+              label="Credential hash"
+              value={privacy?.credentialLeaf}
+              tag={privacy?.credentialIssued ? 'issued' : 'not issued'}
+              on={privacy?.credentialIssued === true}
+            />
           </dl>
         </div>
 
@@ -77,6 +85,12 @@ export function PrivacyCard({ privacy, tally, connected }: Props) {
           <dl>
             <Row label="Member secret" secret tag="never sent" />
             <Row label="Merkle path" secret tag="names no leaf" />
+            <Row
+              label="Credential tier"
+              secret
+              tag={eligibility?.holdsCredential ? `meets tier ${eligibility.minTier}+` : 'none held'}
+              on={eligibility?.meetsThreshold === true}
+            />
           </dl>
         </div>
       </div>

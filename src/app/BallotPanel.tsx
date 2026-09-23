@@ -1,11 +1,13 @@
 import type { CSSProperties } from 'react';
+import type { Eligibility } from '../hooks/useMidnight';
 import type { PrivacyView, TallyView } from '../view';
-import { ArrowDown, Check, Lock, Wallet } from '../ui/icons';
+import { ArrowDown, Check, Key, Lock, Wallet } from '../ui/icons';
 import { hostOf, middle, optionLabel, OPTION_COLORS } from '../ui/format';
 
 type Props = {
   tally: TallyView | null;
   privacy: PrivacyView | null;
+  eligibility: Eligibility | null;
   connected: boolean;
   hasPoll: boolean;
   busy: string | null;
@@ -14,12 +16,13 @@ type Props = {
   proverUri: string;
   onChoose: (option: number) => void;
   onConnect: () => void;
+  onIssue: () => void;
   onEnrol: () => void;
   onVote: (option: number) => void;
 };
 
 const PROVING: Record<string, string> = {
-  Enrolment: 'Building your enrolment proof…',
+  Enrolment: 'Proving your credential clears the threshold…',
   'Poll creation': 'Deploying through your wallet. This takes a minute.',
 };
 
@@ -42,13 +45,30 @@ function StatusLine({ busy, notice }: { busy: string | null; notice: string | nu
 }
 
 export function BallotPanel(props: Props) {
-  const { tally, privacy, connected, hasPoll, busy, notice, choice, proverUri, onChoose, onConnect, onEnrol, onVote } =
-    props;
+  const {
+    tally,
+    privacy,
+    eligibility,
+    connected,
+    hasPoll,
+    busy,
+    notice,
+    choice,
+    proverUri,
+    onChoose,
+    onConnect,
+    onIssue,
+    onEnrol,
+    onVote,
+  } = props;
   const counts = tally?.counts ?? [0, 0, 0];
   const enrolled = privacy?.enrolled === true;
   const voted = privacy?.voted === true;
   const idle = busy === null;
-  const canEnrol = connected && hasPoll && idle && !enrolled;
+  const issuedToMe = privacy?.credentialIssued === true;
+  const holdsCredential = eligibility?.holdsCredential === true;
+  const canIssue = connected && hasPoll && idle && eligibility?.isIssuer === true && !issuedToMe;
+  const canEnrol = connected && hasPoll && idle && !enrolled && issuedToMe;
   const canVote = connected && hasPoll && idle && enrolled && !voted;
   const proving = busy?.startsWith('Ballot') ?? false;
 
@@ -58,7 +78,9 @@ export function BallotPanel(props: Props) {
       ? 'Ballot counted'
       : enrolled
         ? `Prove and vote ${optionLabel(choice)}`
-        : 'Enrol before voting';
+        : issuedToMe
+          ? 'Enrol before voting'
+          : 'A credential is needed first';
 
   const membership = !connected ? 'Wallet needed' : enrolled ? 'In the roster' : 'Not enrolled';
 
@@ -74,11 +96,46 @@ export function BallotPanel(props: Props) {
 
       <div className="ballot-block">
         <div className="block-top">
+          <span className="muted">Credential</span>
+          <span className={issuedToMe ? 'tag tag-green' : 'tag'}>
+            {issuedToMe ? 'issued' : holdsCredential ? 'not on chain' : 'none held'}
+          </span>
+        </div>
+        <div className="block-main">
+          <strong>
+            {issuedToMe
+              ? `Tier ${eligibility?.tier ?? '—'}`
+              : eligibility
+                ? `Tier ${eligibility.minTier}+ needed`
+                : 'Step 1'}
+          </strong>
+          {!issuedToMe && eligibility?.isIssuer && (
+            <button className="btn btn-dark btn-sm" onClick={onIssue} disabled={!canIssue}>
+              <Key size={13} />
+              {busy?.startsWith('Credential') ? 'Issuing…' : 'Issue to me'}
+            </button>
+          )}
+        </div>
+        <code className="block-sub">
+          {privacy?.credentialLeaf
+            ? `credential ${middle(privacy.credentialLeaf, 10, 6)}`
+            : 'the tier stays in this browser, only its hash is published'}
+        </code>
+      </div>
+
+      <div className="ballot-divider" aria-hidden="true">
+        <span>
+          <ArrowDown size={13} />
+        </span>
+      </div>
+
+      <div className="ballot-block">
+        <div className="block-top">
           <span className="muted">Membership</span>
           <span className={enrolled ? 'tag tag-green' : 'tag'}>{membership}</span>
         </div>
         <div className="block-main">
-          <strong>{enrolled ? 'Enrolled' : 'Step 1 · Enrol'}</strong>
+          <strong>{enrolled ? 'Enrolled' : 'Step 2 · Enrol'}</strong>
           {!enrolled && (
             <button className="btn btn-dark btn-sm" onClick={onEnrol} disabled={!canEnrol}>
               {busy === 'Enrolment' ? 'Proving…' : 'Enrol'}
@@ -138,6 +195,10 @@ export function BallotPanel(props: Props) {
         <div>
           <dt>Ballot proof</dt>
           <dd>zero-knowledge</dd>
+        </div>
+        <div>
+          <dt>Threshold</dt>
+          <dd>{eligibility ? `tier ${eligibility.minTier} and up` : '—'}</dd>
         </div>
         <div>
           <dt>Anonymity set</dt>

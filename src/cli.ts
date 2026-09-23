@@ -48,7 +48,7 @@ if (!fs.existsSync(contractPath)) {
 }
 
 const Candor = await import(pathToFileURL(contractPath).href);
-const { witnesses, createPrivateState } = await import('./witnesses.js');
+const { witnesses, createPrivateState, createCredential, withCredential } = await import('./witnesses.js');
 
 const CC = CompiledContract as any;
 const compiledContract = CC.withCompiledFileAssets(
@@ -124,11 +124,15 @@ async function main() {
     console.log('  Connecting to wallet...');
     const walletCtx = await createWallet({ network, networkConfig, seed });
     stopWallet = async () => {
-      try { await walletCtx.wallet.stop(); } catch {}
+      try {
+        await walletCtx.wallet.stop();
+      } catch {}
     };
     const restoredCount = Object.values(walletCtx.restored).filter(Boolean).length;
     if (restoredCount > 0) {
-      console.log(`  Restored ${restoredCount}/3 child wallets from .midnight-wallet-state — sync will resume from saved point.`);
+      console.log(
+        `  Restored ${restoredCount}/3 child wallets from .midnight-wallet-state — sync will resume from saved point.`,
+      );
     }
 
     console.log('  Syncing with network...');
@@ -162,14 +166,37 @@ async function main() {
     console.log('  Connecting to contract...');
     const providers = await createProviders(walletCtx);
 
+    // The poll is gated: a member needs a credential from the issuer before
+    // enrolling. The deploy script kept the issuer key next to the address, so
+    // a self-hosted poll can issue to itself here.
+    const credential = createCredential(Number(process.env.CANDOR_TIER?.trim() || 1));
+    const issuerSecret = deployment.issuerSecret
+      ? Uint8Array.from(Buffer.from(deployment.issuerSecret, 'hex'))
+      : undefined;
+    const privateState = {
+      ...withCredential(createPrivateState(), credential),
+      ...(issuerSecret ? { issuerSecret } : {}),
+    };
+
     const deployed: any = await findDeployedContract(providers, {
       compiledContract: compiledContract as any,
       contractAddress: deployment.address,
       privateStateId: PRIVATE_STATE_ID,
-      initialPrivateState: createPrivateState(),
+      initialPrivateState: privateState,
     });
 
     console.log('  ✅ Connected!\n');
+
+    const issue = async () => {
+      if (!issuerSecret) {
+        throw new Error('No issuer key on file for this poll, so this machine cannot hand out credentials.');
+      }
+      const { commitmentOf, credentialLeafFor } = await import('./witnesses.js');
+      console.log(`  Issuing a tier ${credential.tier} credential to this machine...`);
+      const tx = await deployed.callTx.issue(credentialLeafFor(commitmentOf(privateState), credential));
+      console.log('\n  ✅ Credential issued. Only its hash reached the ledger.');
+      console.log(`  Transaction ID: ${tx.public.txId}\n`);
+    };
 
     const enrol = async () => {
       console.log('  Proving and submitting (this may take 30-60 seconds)...');
@@ -215,6 +242,9 @@ async function main() {
     if (argv.length > 0) {
       const [command, argument] = argv;
       switch (command) {
+        case 'issue':
+          await issue();
+          break;
         case 'enrol':
         case 'enroll':
           await enrol();
@@ -226,12 +256,13 @@ async function main() {
           await readTally();
           break;
         case 'demo':
+          await issue();
           await enrol();
           await castBallot(BigInt(argument ?? '0'));
           await readTally();
           break;
         default:
-          console.error(`  Unknown command "${command}". Use enrol, vote <option>, tally, or demo.\n`);
+          console.error(`  Unknown command "${command}". Use issue, enrol, vote <option>, tally, or demo.\n`);
           process.exitCode = 1;
       }
       await persistWalletState(network, walletCtx);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Status } from '../hooks/useMidnight';
+import type { Eligibility } from '../hooks/useMidnight';
 import type { PrivacyView, TallyView } from '../view';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -33,6 +34,7 @@ export type DashboardProps = {
   status: Status;
   tally: TallyView | null;
   privacy: PrivacyView | null;
+  eligibility: Eligibility | null;
   busy: string | null;
   notice: string | null;
   contractAddress: string;
@@ -45,13 +47,14 @@ export type DashboardProps = {
   onConnect: () => void;
   onDisconnect: () => void;
   onCreatePoll: () => void;
+  onIssue: () => void;
   onEnrol: () => void;
   onVote: (option: number) => void;
   onRefresh: () => void;
 };
 
 export function Dashboard(props: DashboardProps) {
-  const { status, tally, privacy, busy, notice, contractAddress, preview } = props;
+  const { status, tally, privacy, eligibility, busy, notice, contractAddress, preview } = props;
   const [choice, setChoice] = useState(0);
   const [view, setView] = useState<View>(() => (preview ? 'overview' : readView()));
   const { copied, copy } = useCopy();
@@ -69,6 +72,7 @@ export function Dashboard(props: DashboardProps) {
     <BallotPanel
       tally={tally}
       privacy={privacy}
+      eligibility={eligibility}
       connected={connected}
       hasPoll={hasPoll}
       busy={busy}
@@ -77,6 +81,7 @@ export function Dashboard(props: DashboardProps) {
       proverUri={props.proverUri}
       onChoose={setChoice}
       onConnect={props.onConnect}
+      onIssue={props.onIssue}
       onEnrol={props.onEnrol}
       onVote={props.onVote}
     />
@@ -88,7 +93,7 @@ export function Dashboard(props: DashboardProps) {
     <EmptyPoll connected={connected} busy={busy} onConnect={props.onConnect} onCreatePoll={props.onCreatePoll} />
   );
 
-  const privacyCard = <PrivacyCard privacy={privacy} tally={tally} connected={connected} />;
+  const privacyCard = <PrivacyCard privacy={privacy} tally={tally} eligibility={eligibility} connected={connected} />;
 
   const details = (
     <DetailsCard

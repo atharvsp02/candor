@@ -10,11 +10,22 @@ import { fromHex, toHex } from '@midnight-ntwrk/midnight-js-protocol/compact-run
 import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ConnectedAPI, InitialAPI } from '@midnight-ntwrk/dapp-connector-api';
 import { Contract, ledger, pureCircuits, type Ledger } from '../../managed/candor/contract/index.js';
-import { browserPrivateStateProvider, loadOrCreateSecret } from '../browser-private-state';
+import {
+  browserPrivateStateProvider,
+  createIssuerSecret,
+  loadCredential,
+  loadIssuerSecret,
+  loadOrCreateSecret,
+  saveCredential,
+  saveIssuerSecret,
+  type StoredCredential,
+} from '../browser-private-state';
 
 const COMPATIBLE_WALLET_API = '4.x';
 const PRIVATE_STATE_ID = 'candorPrivateState';
 const OPTION_COUNT = 3n;
+const DEFAULT_THRESHOLD = 1n;
+const DEFAULT_TIER = 2;
 
 const NETWORK_ID = (import.meta.env.VITE_NETWORK_ID ?? 'preprod') as NetworkId;
 
@@ -42,6 +53,17 @@ export type PrivacyFacts = {
   readonly enrolled: boolean;
   readonly voted: boolean;
   readonly anonymitySet: bigint;
+  readonly credentialLeaf?: string;
+  readonly credentialIssued: boolean;
+};
+
+export type Eligibility = {
+  readonly minTier: bigint;
+  readonly issued: bigint;
+  readonly holdsCredential: boolean;
+  readonly tier?: number;
+  readonly meetsThreshold: boolean;
+  readonly isIssuer: boolean;
 };
 
 export type Status =
@@ -50,8 +72,7 @@ export type Status =
   | { kind: 'connected'; address: string; wallet: string }
   | { kind: 'error'; message: string };
 
-const hex = (bytes: Uint8Array) =>
-  Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+const hex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
 const findWallet = (): { api: InitialAPI; name: string } | undefined => {
   const injected = (window as unknown as { midnight?: Record<string, unknown> }).midnight;
@@ -76,6 +97,9 @@ const readTally = (state: Ledger): Tally => ({
   counts: Array.from({ length: Number(state.choices) }, (_, i) => state.tally.lookup(BigInt(i)).read()),
 });
 
+const credentialLeafFor = (commitment: Uint8Array, credential: StoredCredential): Uint8Array =>
+  pureCircuits.credentialLeaf(commitment, BigInt(credential.tier), credential.blind);
+
 export const useMidnight = () => {
   const [status, setStatus] = useState<Status>({ kind: 'disconnected' });
   const [contractAddress, setContractAddress] = useState<string>(pollFromUrl);
@@ -84,11 +108,14 @@ export const useMidnight = () => {
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [proverUri, setProverUri] = useState<string>(PROOF_SERVER_OVERRIDE);
+  const [eligibility, setEligibility] = useState<Eligibility | null>(null);
 
   const providers = useRef<any>(null);
   const contract = useRef<any>(null);
   const secret = useRef<Uint8Array | null>(null);
   const publicData = useRef<any>(null);
+  const credential = useRef<StoredCredential | undefined>(undefined);
+  const issuerSecret = useRef<Uint8Array | undefined>(undefined);
 
   const readChain = useCallback(async (address: string) => {
     if (!publicData.current || !address) return;
@@ -97,15 +124,29 @@ export const useMidnight = () => {
     const view = ledger(state.data);
     setTally(readTally(view));
 
+    const heldCredential = credential.current;
+    const issuerKey = issuerSecret.current;
+    setEligibility({
+      minTier: view.minTier,
+      issued: view.issued,
+      holdsCredential: heldCredential !== undefined,
+      tier: heldCredential?.tier,
+      meetsThreshold: heldCredential !== undefined && BigInt(heldCredential.tier) >= view.minTier,
+      isIssuer: issuerKey !== undefined && hex(pureCircuits.issuerKeyOf(issuerKey)) === hex(view.issuer),
+    });
+
     if (secret.current) {
       const commitment = pureCircuits.commitment(secret.current);
       const nullifier = pureCircuits.nullifier(secret.current);
+      const leaf = heldCredential ? credentialLeafFor(commitment, heldCredential) : undefined;
       setPrivacy({
         commitment: hex(commitment),
         nullifier: hex(nullifier),
         enrolled: view.roster.findPathForLeaf(commitment) !== undefined,
         voted: view.spent.member(nullifier),
         anonymitySet: view.enrolled,
+        credentialLeaf: leaf ? hex(leaf) : undefined,
+        credentialIssued: leaf !== undefined && view.credentials.findPathForLeaf(leaf) !== undefined,
       });
     }
   }, []);
@@ -148,23 +189,48 @@ export const useMidnight = () => {
     };
   }, []);
 
+  const privateState = useCallback(
+    () => ({
+      secret: secret.current!,
+      credential: credential.current,
+      issuerSecret: issuerSecret.current,
+    }),
+    [],
+  );
+
   const compiled = useCallback(() => {
     const sk = secret.current!;
     const witnesses = {
       memberSecret: ({ privateState }: any) => [privateState, privateState.secret],
+      memberTier: ({ privateState }: any) => {
+        if (!privateState.credential) throw new Error('This browser holds no credential for the poll.');
+        return [privateState, BigInt(privateState.credential.tier)];
+      },
+      credentialBlind: ({ privateState }: any) => {
+        if (!privateState.credential) throw new Error('This browser holds no credential for the poll.');
+        return [privateState, privateState.credential.blind];
+      },
+      credentialPath: ({ ledger: chain, privateState }: any) => {
+        if (!privateState.credential) throw new Error('This browser holds no credential for the poll.');
+        const leaf = credentialLeafFor(pureCircuits.commitment(privateState.secret), privateState.credential);
+        const path = chain.credentials.findPathForLeaf(leaf);
+        if (path === undefined) throw new Error('No credential has been issued to this browser yet.');
+        return [privateState, path];
+      },
       memberPath: ({ ledger: chain, privateState }: any) => {
         const leaf = pureCircuits.commitment(privateState.secret);
         const path = chain.roster.findPathForLeaf(leaf);
         if (path === undefined) throw new Error('This browser is not enrolled in the poll yet.');
         return [privateState, path];
       },
+      issuerSecret: ({ privateState }: any) => {
+        if (!privateState.issuerSecret) throw new Error('This browser does not hold the issuer key for the poll.');
+        return [privateState, privateState.issuerSecret];
+      },
     };
     void sk;
     const CC = CompiledContract as any;
-    return CC.withCompiledFileAssets(
-      CC.withWitnesses(CompiledContract.make('candor', Contract), witnesses),
-      '',
-    );
+    return CC.withCompiledFileAssets(CC.withWitnesses(CompiledContract.make('candor', Contract), witnesses), '');
   }, []);
 
   const connect = useCallback(async () => {
@@ -192,11 +258,13 @@ export const useMidnight = () => {
       secret.current = loadOrCreateSecret();
 
       if (contractAddress) {
+        credential.current = loadCredential(contractAddress);
+        issuerSecret.current = loadIssuerSecret(contractAddress);
         contract.current = await findDeployedContract(providers.current, {
           compiledContract: compiled(),
           contractAddress,
           privateStateId: PRIVATE_STATE_ID,
-          initialPrivateState: { secret: secret.current },
+          initialPrivateState: privateState(),
         });
       }
 
@@ -234,28 +302,49 @@ export const useMidnight = () => {
   );
 
   const createPoll = useCallback(
-    () =>
+    (threshold: bigint = DEFAULT_THRESHOLD) =>
       run('Poll creation', async () => {
+        const key = createIssuerSecret();
+        issuerSecret.current = key;
+        credential.current = undefined;
         const deployedContract = await deployContract(providers.current, {
           compiledContract: compiled(),
-          args: [OPTION_COUNT],
+          args: [OPTION_COUNT, threshold, pureCircuits.issuerKeyOf(key)],
           privateStateId: PRIVATE_STATE_ID,
-          initialPrivateState: { secret: secret.current! },
+          initialPrivateState: privateState(),
         } as any);
         contract.current = deployedContract;
         const address = (deployedContract as any).deployTxData.public.contractAddress;
+        saveIssuerSecret(address, key);
         setContractAddress(address);
         putPollInUrl(address);
         await readChain(address);
       }),
-    [compiled, readChain, run],
+    [compiled, privateState, readChain, run],
+  );
+
+  const issueCredential = useCallback(
+    (tier: number = DEFAULT_TIER, holder?: string) =>
+      run(`Credential for tier ${tier}`, async () => {
+        if (!issuerSecret.current) throw new Error('This browser does not hold the issuer key for the poll.');
+        const blind = crypto.getRandomValues(new Uint8Array(32));
+        const issuedTo = holder
+          ? Uint8Array.from(holder.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16))
+          : pureCircuits.commitment(secret.current!);
+        const leaf = credentialLeafFor(issuedTo, { tier, blind });
+        await contract.current.callTx.issue(leaf);
+        if (!holder) {
+          credential.current = { tier, blind };
+          saveCredential(contractAddress, { tier, blind });
+        }
+      }),
+    [contractAddress, run],
   );
 
   const enrol = useCallback(() => run('Enrolment', () => contract.current.callTx.enroll()), [run]);
 
   const vote = useCallback(
-    (option: number) =>
-      run(`Ballot for option ${option}`, () => contract.current.callTx.vote(BigInt(option))),
+    (option: number) => run(`Ballot for option ${option}`, () => contract.current.callTx.vote(BigInt(option))),
     [run],
   );
 
@@ -263,6 +352,7 @@ export const useMidnight = () => {
     status,
     tally,
     privacy,
+    eligibility,
     busy,
     notice,
     contractAddress,
@@ -272,6 +362,7 @@ export const useMidnight = () => {
     connect,
     disconnect,
     createPoll,
+    issueCredential,
     enrol,
     vote,
     refresh: () => readChain(contractAddress),

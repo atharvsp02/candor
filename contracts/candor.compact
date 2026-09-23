@@ -5,23 +5,37 @@ import CompactStandardLibrary;
 // Privacy model
 //
 // PUBLIC (on the ledger, readable by anyone):
-//   roster    - Merkle tree of member commitments
-//   members   - the same commitments as a set, to reject duplicate enrolment
-//   spent     - nullifiers that have already been used
-//   tally     - vote count per option
-//   choices   - number of options in this poll
-//   enrolled  - number of members admitted
-//   cast      - number of ballots accepted
+//   credentials - Merkle tree of issued credential hashes
+//   issuer      - hash of the issuer secret, fixed when the poll is created
+//   minTier     - the eligibility threshold a credential must meet
+//   issued      - number of credentials handed out
+//   roster      - Merkle tree of member commitments
+//   members     - the same commitments as a set, to reject duplicate enrolment
+//   spent       - nullifiers that have already been used
+//   tally       - vote count per option
+//   choices     - number of options in this poll
+//   enrolled    - number of members admitted
+//   cast        - number of ballots accepted
 //
-// PRIVATE (witnesses, never leave the voter's machine):
-//   memberSecret - the voter's secret key
-//   memberPath   - the voter's Merkle path, which identifies their leaf
+// PRIVATE (witnesses, never leave the holder's machine):
+//   memberSecret    - the voter's secret key
+//   memberTier      - the tier the issuer granted this member
+//   credentialBlind - the blinding factor that hides the tier inside the hash
+//   credentialPath  - the Merkle path to the member's credential
+//   memberPath      - the voter's Merkle path, which identifies their roster leaf
+//   issuerSecret    - the poll issuer's key
 //
 // PROVED WITHOUT REVEALING:
-//   That the voter's commitment sits somewhere in the roster, without
-//   revealing which leaf it is, and that they have not voted before.
-//   The tally moves; the link between voter and ballot is never written.
+//   At enrolment, that a credential for this member sits somewhere in the
+//   credential tree and that its tier meets the threshold - without revealing
+//   the tier, the blinding factor, or which credential it is. At voting, that
+//   the member's commitment sits somewhere in the roster and has not voted
+//   before. The tally moves; the link between voter and ballot is never written.
 
+export ledger credentials: MerkleTree<10, Bytes<32>>;
+export ledger issuer: Bytes<32>;
+export ledger minTier: Uint<8>;
+export ledger issued: Counter;
 export ledger roster: MerkleTree<10, Bytes<32>>;
 export ledger members: Set<Bytes<32>>;
 export ledger spent: Set<Bytes<32>>;
@@ -30,11 +44,13 @@ export ledger choices: Uint<8>;
 export ledger enrolled: Counter;
 export ledger cast: Counter;
 
-constructor(optionCount: Uint<8>) {
+constructor(optionCount: Uint<8>, threshold: Uint<8>, issuerKey: Bytes<32>) {
   const count = disclose(optionCount);
   assert(count >= 2, "a poll needs at least two options");
   assert(count <= 8, "a poll supports at most eight options");
   choices = count;
+  minTier = disclose(threshold);
+  issuer = disclose(issuerKey);
   for (const i of 0 .. 8) {
     if ((i as Uint<8>) < count) {
       tally.insert(i as Uint<8>, default<Counter>);
@@ -43,7 +59,11 @@ constructor(optionCount: Uint<8>) {
 }
 
 witness memberSecret(): Bytes<32>;
+witness memberTier(): Uint<8>;
+witness credentialBlind(): Bytes<32>;
+witness credentialPath(): MerkleTreePath<10, Bytes<32>>;
 witness memberPath(): MerkleTreePath<10, Bytes<32>>;
+witness issuerSecret(): Bytes<32>;
 
 export circuit commitment(sk: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([pad(32, "candor:member:v1"), sk]);
@@ -53,8 +73,39 @@ export circuit nullifier(sk: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([pad(32, "candor:nullifier:v1"), sk]);
 }
 
+export circuit issuerKeyOf(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "candor:issuer:v1"), secret]);
+}
+
+export circuit credentialLeaf(holder: Bytes<32>, tier: Uint<8>, blind: Bytes<32>): Bytes<32> {
+  return persistentHash<[Bytes<32>, Bytes<32>, Uint<8>, Bytes<32>]>(
+    [pad(32, "candor:credential:v1"), holder, tier, blind]
+  );
+}
+
+export circuit issue(leaf: Bytes<32>): [] {
+  assert(issuerKeyOf(issuerSecret()) == issuer, "only this poll's issuer can hand out credentials");
+  const entry = disclose(leaf);
+  assert(!credentials.isFull(), "no room for another credential");
+  credentials.insert(entry);
+  issued.increment(1);
+}
+
 export circuit enroll(): Bytes<32> {
-  const leaf = disclose(commitment(memberSecret()));
+  const sk = memberSecret();
+  const tier = memberTier();
+  const blind = credentialBlind();
+  const path = credentialPath();
+  const holder = commitment(sk);
+
+  assert(tier >= minTier, "this credential is below the poll's threshold");
+  assert(path.leaf == credentialLeaf(holder, tier, blind), "credential does not belong to this member");
+  assert(
+    credentials.checkRoot(disclose(merkleTreePathRoot<10, Bytes<32>>(path))),
+    "no credential was issued for this member"
+  );
+
+  const leaf = disclose(holder);
   assert(!members.member(leaf), "this member is already enrolled");
   assert(!roster.isFull(), "roster is full");
   roster.insert(leaf);
