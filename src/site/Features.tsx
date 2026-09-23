@@ -208,7 +208,7 @@ function WalletsMini() {
 export function Features({ live }: { live: LivePoll }) {
   return (
     <section className="block" id="features">
-      <SectionHead kicker="Solution" title="One member. One ballot. Zero trace." />
+      <SectionHead kicker="Solution" title="One member. One ballot. No link to the voter." />
       <div className="features">
         <Feature
           order={0}
