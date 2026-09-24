@@ -7,6 +7,8 @@
 **Live demo:** [candor-self.vercel.app](https://candor-self.vercel.app) — the landing page explains it, and
 [`/app`](https://candor-self.vercel.app/app) opens the poll running on Midnight Preprod.
 
+**Product proposal:** [Private Voting — anonymous ballots with publicly verifiable tallies](PROPOSAL.md)
+
 **Demo video:** [wallet connect, enrolment and a ballot on Preprod](https://drive.google.com/file/d/1nB7RrsJC5um1R07RGWUv-DnH1BbdcbnE/view?usp=sharing)
 (1:52) — connecting 1AM, enrolling a member, casting a ballot, and reading the commitment and spent
 nullifier back off the chain.
@@ -459,6 +461,9 @@ vercel.json                       static hosting for the web app
 ```
 
 ## Initial Idea
+
+The full write-up is in [PROPOSAL.md](PROPOSAL.md) — the problem, who it is for, why Midnight is the only
+place it is buildable honestly, and what the remaining levels deliver. The short version:
 
 Candor is a primitive with a product attached. The primitive is anonymous, sybil-resistant polling: prove you belong to a group, vote once, reveal nothing else. The product is honest internal feedback for organisations that currently cannot buy it at any price.
 
