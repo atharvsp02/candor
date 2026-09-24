@@ -13,7 +13,12 @@ export const PRIVACY_LAYERS: readonly PrivacyLayer[] = [
     title: 'Public ledger',
     sub: 'Readable by anyone, forever',
     lead: 'Holds:',
-    items: ['Roster of member commitments', 'Spent nullifiers', 'Ballot count per option', 'Totals enrolled and cast'],
+    items: [
+      'Hash of every issued credential',
+      'Roster of member commitments',
+      'Spent nullifiers',
+      'Ballot count per option',
+    ],
   },
   {
     label: 'In the proof',
@@ -22,9 +27,9 @@ export const PRIVACY_LAYERS: readonly PrivacyLayer[] = [
     sub: 'Checked by the network without naming you',
     lead: 'Proves that:',
     items: [
+      'Your credential was issued for this poll',
+      'Its tier clears the threshold',
       'Your commitment is in the roster',
-      'Your nullifier comes from the same secret',
-      'Your choice is on the ballot',
       'You have not voted before',
     ],
   },
@@ -35,8 +40,8 @@ export const PRIVACY_LAYERS: readonly PrivacyLayer[] = [
     lead: 'Keeps:',
     items: [
       'Your 32-byte member secret',
-      'Your Merkle path',
-      'The witnesses behind each proof',
+      'The tier your credential grants',
+      'The blinding factor that hides it',
       'The link between you and your ballot',
     ],
   },

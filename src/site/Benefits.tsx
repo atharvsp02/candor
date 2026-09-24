@@ -44,8 +44,14 @@ const STEPS: { glyph: GlyphName; pos: string; title: string; body: string }[] = 
   {
     glyph: 'key',
     pos: '50% 20%',
+    title: 'Hold a credential',
+    body: 'The organiser issues you a tier. Only its hash reaches the chain, never the tier itself.',
+  },
+  {
+    glyph: 'seal',
+    pos: '70% 60%',
     title: 'Enrol once',
-    body: 'Your browser creates a secret and publishes only its hash into the roster.',
+    body: 'Prove your credential clears the threshold and belongs to you, revealing neither.',
   },
   {
     glyph: 'ballot',

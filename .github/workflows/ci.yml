@@ -41,4 +41,4 @@ jobs:
         run: npm run build
         env:
           VITE_NETWORK_ID: preprod
-          VITE_CONTRACT_ADDRESS: ec565faac3103ff42017cebd3cc2510407b2068aa164ee54349ed7f0305e9e29
+          VITE_CONTRACT_ADDRESS: 815ed0190cbdb7889c490cff10a3f5451ac096d3b702c08ae1a71200db2c5f31

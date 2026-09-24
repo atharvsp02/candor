@@ -15,22 +15,22 @@ nullifier back off the chain.
 
 ## Contract Address
 
-| Network | Address | Deployed at |
-|---------|---------|-------------|
-| **Preprod** | `ec565faac3103ff42017cebd3cc2510407b2068aa164ee54349ed7f0305e9e29` | block 2573777 |
-| Preview | `b6b3a6862110bc33245c785e4658b58c5d964f3a662498bbba2e78034c6594fe` | block 861620 |
+| Network | Address | Deployed at | Notes |
+|---------|---------|-------------|-------|
+| **Preprod** | `815ed0190cbdb7889c490cff10a3f5451ac096d3b702c08ae1a71200db2c5f31` | block 2684775 | current — gated by an issued credential |
+| Preprod | `ec565faac3103ff42017cebd3cc2510407b2068aa164ee54349ed7f0305e9e29` | block 2573777 | earlier build, open enrolment |
+| Preview | `b6b3a6862110bc33245c785e4658b58c5d964f3a662498bbba2e78034c6594fe` | block 861620 | first deployment |
 
 Don't take my word for it — ask the public indexer:
 
 ```bash
 curl -s -X POST https://indexer.preprod.midnight.network/api/v4/graphql \
   -H 'Content-Type: application/json' \
-  -d '{"query":"{ contractAction(address: \"ec565faac3103ff42017cebd3cc2510407b2068aa164ee54349ed7f0305e9e29\") { __typename transaction { hash block { height } } } }"}'
+  -d '{"query":"{ contractAction(address: \"815ed0190cbdb7889c490cff10a3f5451ac096d3b702c08ae1a71200db2c5f31\") { __typename transaction { hash block { height } } } }"}'
 ```
 
-It answers `ContractDeploy`, transaction `8c3284f69a795bd58fcf404f519ccf9d26909d55f2975ee747d04d75476453ce`.
-
-The Preprod contract was deployed from the browser through Lace — see [Deploying through the wallet](#deploying-through-the-wallet).
+It answers `ContractDeploy`. Both Preprod polls were deployed from the browser through a wallet — see
+[Deploying through the wallet](#deploying-through-the-wallet).
 
 ## The problem
 
@@ -42,14 +42,24 @@ You cannot fix that with a stronger promise. The promise is the flaw.
 
 ## What Candor does
 
-A poll is a deployed contract. Members enrol by publishing a commitment to a secret that never leaves their machine. To vote, a member proves — in zero knowledge — two things at once:
+A poll is a deployed contract with an organiser who decides who is entitled to answer.
+
+The organiser issues each eligible person a **credential** carrying a tier — a grade, a seniority band, a
+stake threshold, whatever the poll is gating on. Only a hash of that credential reaches the chain.
+
+To enrol, a member proves in zero knowledge that a credential was issued *to them* and that its tier
+clears the poll's threshold, without revealing the tier or which credential it is. Enrolment publishes a
+commitment to a secret that never leaves their machine.
+
+To vote, a member proves two more things at once:
 
 1. their commitment is somewhere in the roster, and
 2. they have not voted in this poll before.
 
-Neither proof reveals *which* member they are. The tally moves. The link between a voter and their ballot is never written down, so there is nothing for an operator to leak, lose, subpoena, or sell.
+None of these proofs reveal *which* member they are. The tally moves. The link between a voter and their
+ballot is never written down, so there is nothing for an operator to leak, lose, subpoena, or sell.
 
-The count is publicly auditable. The voters are not.
+The count is publicly auditable. The eligibility is enforced. The voters are not identified.
 
 ## How it works
 
@@ -57,33 +67,56 @@ The count is publicly auditable. The voters are not.
 flowchart LR
   subgraph priv["Voter's machine — never transmitted"]
     sk["member secret"]
-    mp["Merkle path"]
+    tr["credential tier"]
+    bl["blinding factor"]
+    mp["Merkle paths"]
   end
-  subgraph zk["Zero-knowledge circuit"]
-    pf["prove: my leaf is in the roster<br/>prove: my nullifier is unused"]
+  subgraph zk["Zero-knowledge circuits"]
+    en["enrol: my credential was issued to me<br/>enrol: its tier clears the threshold"]
+    vo["vote: my leaf is in the roster<br/>vote: my nullifier is unused"]
   end
   subgraph pub["Ledger — visible to everyone"]
+    ct["credential root"]
     rt["roster root"]
     sp["spent nullifiers"]
     tl["tally"]
   end
-  sk --> pf
-  mp --> pf
-  pf -->|"discloses only: root, nullifier, choice"| pub
+  sk --> en
+  tr --> en
+  bl --> en
+  mp --> en
+  sk --> vo
+  mp --> vo
+  en -->|"discloses only: credential root, commitment"| pub
+  vo -->|"discloses only: roster root, nullifier, choice"| pub
 ```
 
-**Enrolling** publishes `commitment = hash("candor:member:v1", secret)` into a Merkle tree. This is a public act — the roster is meant to be inspectable, so anyone can confirm who was entitled to vote.
+**Issuing** writes `leaf = hash("candor:credential:v1", holder, tier, blind)` into a credential tree. The
+circuit checks that the caller holds the issuer key this poll was created with, so nobody can mint their
+own eligibility. The tier is inside the hash, and the blinding factor is what stops anyone trying all
+eight tiers until the hash matches.
 
-**Voting** proves the secret behind *some* leaf of that tree, and spends `nullifier = hash("candor:nullifier:v1", secret)`. The nullifier is stable for a given member, so a second ballot is rejected. It shares no preimage with the commitment, so it cannot be traced back to the leaf it came from.
+**Enrolling** proves that leaf is in the credential tree, that its `holder` is the caller's own
+commitment, and that `tier >= minTier` — then publishes `commitment = hash("candor:member:v1", secret)`
+into the roster. The roster is meant to be inspectable, so anyone can confirm who was entitled to vote;
+the credential behind each entry is not.
+
+**Voting** proves the secret behind *some* leaf of the roster, and spends `nullifier = hash("candor:nullifier:v1", secret)`. The nullifier is stable for a given member, so a second ballot is rejected. It shares no preimage with the commitment, so it cannot be traced back to the leaf it came from.
 
 The anonymity set is every enrolled member.
 
 ## Privacy Model
 
+A poll discloses exactly three things and hides everything else.
+
 **PUBLIC** — on the ledger, readable by anyone:
 
 | State | Meaning |
 |-------|---------|
+| `credentials` | Merkle tree of issued credential hashes |
+| `issuer` | hash of the issuer key, fixed when the poll is created |
+| `minTier` | the tier a credential must reach to enrol |
+| `issued` | how many credentials have been handed out |
 | `roster` | Merkle tree of member commitments |
 | `members` | the same commitments as a set, so nobody enrols twice |
 | `spent` | nullifiers that have already been used |
@@ -91,33 +124,61 @@ The anonymity set is every enrolled member.
 | `choices` | number of options on the ballot |
 | `enrolled` / `cast` | members admitted, ballots accepted |
 
-**PRIVATE** — witnesses, which never leave the voter's machine:
+**PRIVATE** — witnesses, which never leave the holder's machine:
 
 | Witness | Meaning |
 |---------|---------|
 | `memberSecret` | the voter's secret key |
-| `memberPath` | the Merkle path that identifies the voter's leaf |
+| `memberTier` | the tier the issuer granted them |
+| `credentialBlind` | the blinding factor that hides the tier inside the published hash |
+| `credentialPath` | the Merkle path to their credential |
+| `memberPath` | the Merkle path that identifies the voter's roster leaf |
+| `issuerSecret` | the issuer's key, held by whoever runs the poll |
 
-**PROVED WITHOUT REVEALING** — that the voter's commitment sits somewhere in the roster, and that this is their first ballot, without revealing which leaf is theirs.
+**PROVED WITHOUT REVEALING**
+
+At enrolment: that a credential for this member sits in the credential tree, that it binds to their own
+secret, and that its tier meets `minTier` — without revealing the tier, the blinding factor, or which
+credential it is.
+
+At voting: that the member's commitment sits somewhere in the roster and has not voted before — without
+revealing which leaf is theirs.
+
+### What an observer can and cannot learn
+
+| An observer sees | An observer cannot tell |
+|---|---|
+| A credential was issued (a 32-byte hash) | Who it was issued to, or what tier it grants |
+| Someone eligible enrolled | Which credential they used, or how far above the threshold they were |
+| A ballot was cast, and for which option | Which of the enrolled members cast it |
+| The number issued, enrolled and cast | Any link between a credential, a commitment and a nullifier |
+
+The blinding factor is what makes the tier private. Tiers are small numbers, so a hash of
+`(holder, tier)` alone could be brute-forced by trying every tier; `(holder, tier, blind)` cannot.
 
 ## Privacy Claim
 
 **Claim:** an observer with full access to the chain, the indexer, and the contract source can determine
-that a ballot was cast and which option it chose, but cannot determine which enrolled member cast it.
+that a ballot was cast and which option it chose, but cannot determine which enrolled member cast it, and
+cannot determine what tier of credential anyone was issued.
 
 **What is published, and why it does not identify you**
 
 | Value | Published | Why it is safe |
 |---|---|---|
+| Credential `hash("candor:credential:v1", holder, tier, blind)` | at issue | The tier is inside a hash with 32 bytes of blinding, so the domain is not small enough to search |
 | Commitment `hash("candor:member:v1", secret)` | at enrolment | It is a one-way hash, and enrolment is a separate transaction from voting |
+| Merkle root of the credential tree | at enrolment | Already public — it is the tree every credential is in |
 | Nullifier `hash("candor:nullifier:v1", secret)` | at voting | Shares no preimage with the commitment; linking the two requires inverting the hash |
 | Merkle root of the roster | at voting | Already public — it is the tree every member is in |
 | The chosen option | at voting | The response is meant to be counted; the respondent is not |
 
 **What is never transmitted**
 
-The member secret and the Merkle path stay in the voter's browser. The path is the value that would
-identify which leaf is theirs, which is exactly why it is a witness and not an argument.
+The member secret, the credential tier, the blinding factor and both Merkle paths stay in the voter's
+browser. A path is the value that would identify which leaf is theirs, which is exactly why it is a
+witness and not an argument. The issuer's key never leaves the organiser's browser either — the poll
+stores only its hash.
 
 **Where the claim would break, and how the contract prevents it**
 
@@ -132,15 +193,6 @@ Connect a wallet in the live demo. The "What the chain knows about you" panel re
 nullifier back from the ledger and shows the size of the anonymity set they are hidden within. Every
 value shown is fetched from the chain; the two redacted rows are redacted because there is nothing on
 chain to fetch.
-
-### What an observer actually sees
-
-| Observable | Hidden |
-|---|---|
-| A ballot was cast | Who cast it |
-| Which option it was for | Which of the enrolled members chose it |
-| A 32-byte nullifier | Any link from that nullifier to a commitment |
-| The full roster of commitments | Which commitment belongs to which person |
 
 ## Design notes
 
@@ -178,6 +230,14 @@ Two preconditions are easy to miss, and both fail silently:
   proof server is mandatory, but its settings also offer a hosted prover that works. The app lets
   `VITE_PROOF_SERVER_URI` override whatever the wallet reports.
 
+### Why the issuer is a key, not an address
+
+The obvious way to gate `issue` is to check the caller's wallet address. That publishes who the
+organiser is, ties the poll to one device, and makes a lost wallet a lost poll. Instead the contract
+stores `hash("candor:issuer:v1", secret)` and `issue` proves knowledge of the preimage. The chain learns
+that somebody authorised to issue did so, and nothing else — which is the same shape as the rest of the
+contract, so the gate does not become the one place identity leaks.
+
 ### One poll per deployment
 
 Each poll is its own contract, so nullifiers never need a round counter and there is no administrator who can reopen or rewrite a closed poll. Deploying is cheap; shared mutable state is not.
@@ -185,6 +245,30 @@ Each poll is its own contract, so nullifiers never need a round counter and ther
 ## The contract
 
 ```compact
+export circuit enroll(): Bytes<32> {
+  const sk = memberSecret();
+  const tier = memberTier();
+  const blind = credentialBlind();
+  const path = credentialPath();
+  const holder = commitment(sk);
+
+  assert(tier >= minTier, "this credential is below the poll's threshold");
+  assert(path.leaf == credentialLeaf(holder, tier, blind),
+         "credential does not belong to this member");
+  assert(
+    credentials.checkRoot(disclose(merkleTreePathRoot<10, Bytes<32>>(path))),
+    "no credential was issued for this member"
+  );
+
+  const leaf = disclose(holder);
+  assert(!members.member(leaf), "this member is already enrolled");
+  assert(!roster.isFull(), "roster is full");
+  roster.insert(leaf);
+  members.insert(leaf);
+  enrolled.increment(1);
+  return leaf;
+}
+
 export circuit vote(choice: Uint<8>): [] {
   const pick = disclose(choice);
   assert(pick < choices, "choice is not on the ballot");
@@ -244,13 +328,23 @@ npm run compile
 npm test
 ```
 
-Ten tests in three groups:
+Seventeen tests in four groups:
 
 - **circuit logic** — a poll needs at least two options, enrolling stores the commitment it returns, a member is admitted only once, a ballot off the end of the list is refused
+- **eligibility gate** — a credential at the threshold gets in; one below it, one issued to somebody else, a tier the holder awarded themselves, and a member with no credential at all are all turned away; only the issuer this poll was created with can hand out credentials
 - **state transitions** — the tally moves only for the option chosen, one nullifier is spent per ballot, an unenrolled secret is turned away
-- **privacy** — no member secret reaches the ledger, the published nullifier is not the published commitment, and no commitment appears alongside the ballots
+- **privacy** — no member secret reaches the ledger, the published nullifier is not the published commitment, no commitment appears alongside the ballots, and the tier cannot be recovered from the published credential hash
 
-The privacy group is the point. It asserts the properties this product actually claims, so a change that quietly breaks anonymity fails the suite rather than shipping.
+The privacy group is the point. It asserts the properties this product actually claims, so a change that quietly breaks anonymity fails the suite rather than shipping. The tier test is the sharpest of them: it brute-forces every tier a credential could carry and checks that none of them reproduces the hash on chain, which is exactly the attack the blinding factor exists to stop.
+
+A second suite talks to a real network:
+
+```bash
+npm run test:e2e
+```
+
+It reconnects to the deployed contract through the indexer, reads the ledger back, and exits non-zero if
+the poll is not where it should be.
 
 ## Run the web app
 
@@ -303,11 +397,16 @@ npm run cli
 The CLI is scriptable, which is what the demo uses:
 
 ```bash
+npm run cli -- issue     # the poll's issuer hands this machine a credential
 npm run cli -- enrol
 npm run cli -- vote 0
 npm run cli -- tally
-npm run cli -- demo      # enrol, vote, then read the tally
+npm run cli -- demo      # issue, enrol, vote, then read the tally
 ```
+
+`issue` only works where the issuer key is on file — the deploy script writes it next to the address, so
+a poll you deployed yourself can credential itself. Against somebody else's poll the command refuses,
+which is the point of the gate.
 
 Against a public testnet:
 
@@ -322,7 +421,11 @@ the [faucet](https://midnight-tmnight-preview.nethermind.dev/) while the first s
 still running. A fresh wallet scans the chain from the start and that takes a while —
 Preprod's chain is roughly three times longer than Preview's, so budget accordingly.
 
-Set `CANDOR_OPTIONS` to change the number of options on the ballot (default 3).
+| Variable | Purpose | Default |
+|---|---|---|
+| `CANDOR_OPTIONS` | options on the ballot, at deploy time | `3` |
+| `CANDOR_MIN_TIER` | the tier a credential must reach to enrol, at deploy time | `1` |
+| `CANDOR_TIER` | the tier `issue` hands out | `1` |
 
 ## Project Layout
 
@@ -334,21 +437,23 @@ tests/candor.test.ts              the test suite
 src/hooks/useMidnight.ts          wallet, providers, proving and ledger reads
 src/main.tsx                      routes / to the landing page and /app to the poll
 src/site/                         landing page sections, with a live-rendered preview of the app
+src/live/                         reads the poll off the indexer without loading the proving stack
 src/app/AppPage.tsx               binds the wallet hook to the dashboard and logs session activity
 src/app/Dashboard.tsx             the poll dashboard, shared by /app and the landing preview
-src/app/BallotPanel.tsx           connect, enrol and vote
+src/app/BallotPanel.tsx           credential, enrolment and ballot, in that order
 src/app/TallyCard.tsx             live tally chart, or deploying a new poll when none is open
 src/app/PrivacyCard.tsx           what the chain holds about you, read back from it
 src/styles/                       design tokens, landing and dashboard styles
 src/assets/art/                   cloud artwork in five palettes
 src/view.ts                       ledger values converted for rendering
-src/browser-private-state.ts      private state for the browser; the secret stays in localStorage
+src/browser-private-state.ts      secret, credential and issuer key, kept in localStorage
 
-src/witnesses.ts                  witness implementations for the CLI
+src/witnesses.ts                  witness implementations, shared by the tests and the CLI
 src/deploy.ts                     deploy to local devnet, preview, or preprod
-src/cli.ts                        enrol, vote, read the tally from a terminal
+src/cli.ts                        issue, enrol, vote, read the tally from a terminal
 src/address.ts                    derive the funding address without syncing
 
+scripts/e2e-check.ts              reconnects to the deployed poll and reads its ledger back
 .github/workflows/ci.yml          compile, typecheck, test and build on every push
 vercel.json                       static hosting for the web app
 ```
@@ -369,7 +474,11 @@ The next step is to make the cryptography disappear. Creating a poll and sharing
 
 ![ballot](docs/interface-poll.jpg)
 
-**Compile — circuits and keys generated**
+**Tests — the eligibility gate and the privacy properties, asserted**
+
+![test output](docs/tests.png)
+
+**Compile — three circuits, with proving and verifying keys for each**
 
 ![compile output](docs/compile.png)
 

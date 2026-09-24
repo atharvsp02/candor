@@ -198,6 +198,15 @@ export const useMidnight = () => {
     [],
   );
 
+  // The SDK keeps its own copy of the private state, so a credential picked up
+  // after the contract was attached has to be written back or the witnesses
+  // will not see it.
+  const syncPrivateState = useCallback(async () => {
+    const provider = providers.current?.privateStateProvider;
+    if (!provider) return;
+    await provider.set(PRIVATE_STATE_ID, privateState());
+  }, [privateState]);
+
   const compiled = useCallback(() => {
     const sk = secret.current!;
     const witnesses = {
@@ -266,6 +275,7 @@ export const useMidnight = () => {
           privateStateId: PRIVATE_STATE_ID,
           initialPrivateState: privateState(),
         });
+        await syncPrivateState();
       }
 
       const shielded = await api.getShieldedAddresses();
@@ -274,7 +284,7 @@ export const useMidnight = () => {
     } catch (error) {
       setStatus({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
     }
-  }, [buildProviders, compiled, contractAddress, readChain]);
+  }, [buildProviders, compiled, contractAddress, privateState, readChain, syncPrivateState]);
 
   const disconnect = useCallback(() => {
     contract.current = null;
@@ -316,11 +326,12 @@ export const useMidnight = () => {
         contract.current = deployedContract;
         const address = (deployedContract as any).deployTxData.public.contractAddress;
         saveIssuerSecret(address, key);
+        await syncPrivateState();
         setContractAddress(address);
         putPollInUrl(address);
         await readChain(address);
       }),
-    [compiled, privateState, readChain, run],
+    [compiled, privateState, readChain, run, syncPrivateState],
   );
 
   const issueCredential = useCallback(
@@ -336,9 +347,10 @@ export const useMidnight = () => {
         if (!holder) {
           credential.current = { tier, blind };
           saveCredential(contractAddress, { tier, blind });
+          await syncPrivateState();
         }
       }),
-    [contractAddress, run],
+    [contractAddress, run, syncPrivateState],
   );
 
   const enrol = useCallback(() => run('Enrolment', () => contract.current.callTx.enroll()), [run]);
