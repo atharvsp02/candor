@@ -232,22 +232,31 @@ Two preconditions are easy to miss, and both fail silently:
   proof server is mandatory, but its settings also offer a hosted prover that works. The app lets
   `VITE_PROOF_SERVER_URI` override whatever the wallet reports.
 
-### Why the proving keys are not cached forever
+### Why the proving keys live at a hashed path
 
 The proving and verifying keys are served from the app's own origin, because the browser fetches them
 before it can prove. They are large — five megabytes for `enroll` — so the first version of `vercel.json`
 cached them with `max-age=31536000, immutable`.
 
 That was wrong, and it broke the live site the first time the circuits changed. Vite content-hashes its
-own bundles, so `assets/index-<hash>.js` is safe to freeze forever; `keys/enroll.verifier` has no hash in
-its path. Every browser that had loaded the previous build kept serving the old verifier key from cache
-and never revalidated, which paired old keys with a new contract and produced a `mismatched verifier
-keys` error that looked like a contract bug. The giveaway was that only `enroll` and `vote` were named:
-`issue` was a new file, so nothing had cached it.
+own bundles, so `assets/index-<hash>.js` is safe to freeze forever. `keys/enroll.verifier` was not
+hashed: the bytes behind that URL changed when the eligibility gate was added, but the URL did not, and
+`immutable` means the browser never asks again. Returning visitors handed Level 2 verifier keys to a
+Level 3 contract and got a `mismatched verifier keys` error that reads like a contract bug.
 
-The fix is `max-age=0, must-revalidate`. Vercel already sends an `ETag` for these files, so an unchanged
-key costs one conditional request and a `304` rather than a five-megabyte download. Freeze a path
-forever only when its name changes with its contents.
+The symptom named `enroll` and `vote` but not `issue`, which is the whole story in one line: `issue` was
+a new file, so nothing had it cached. Local development never saw it either, because the Vite dev server
+does not send those headers.
+
+Relaxing the header would have fixed future deploys and done nothing for browsers already holding an
+immutable entry — they will not revalidate for a year, and no header can reach them. Only a different
+URL can. So `npm run ui:assets` now hashes the compiled artifacts and copies them to
+`public/zk/<hash>/`, and the app points `FetchZkConfigProvider` at that path. The hash is derived from
+the key and zkIR bytes, so changing a circuit changes the URL, and the old entry is simply never
+requested again.
+
+That path can go back to `immutable`, correctly this time. The rule it violated: freeze a URL forever
+only when its name is derived from its contents.
 
 ### Why the issuer is a key, not an address
 
@@ -472,6 +481,7 @@ src/deploy.ts                     deploy to local devnet, preview, or preprod
 src/cli.ts                        issue, enrol, vote, read the tally from a terminal
 src/address.ts                    derive the funding address without syncing
 
+scripts/ui-assets.mjs             copies the keys and zkIRs to a content-hashed public path
 scripts/e2e-check.ts              reconnects to the deployed poll and reads its ledger back
 .github/workflows/ci.yml          compile, typecheck, test and build on every push
 vercel.json                       static hosting for the web app

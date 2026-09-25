@@ -21,7 +21,7 @@
     "test:watch": "vitest",
     "address": "npx tsx src/address.ts",
     "dev": "npm run ui:assets && vite",
-    "ui:assets": "mkdir -p public/keys public/zkir && cp -r managed/candor/keys/* public/keys/ && cp -r managed/candor/zkir/* public/zkir/",
+    "ui:assets": "node scripts/ui-assets.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },

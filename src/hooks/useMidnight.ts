@@ -163,7 +163,7 @@ export const useMidnight = () => {
   const buildProviders = useCallback(async (api: ConnectedAPI) => {
     const config = await api.getConfiguration();
     const shielded = await api.getShieldedAddresses();
-    const zkConfigProvider = new FetchZkConfigProvider(window.location.origin, fetch.bind(window));
+    const zkConfigProvider = new FetchZkConfigProvider(`${window.location.origin}/zk/${__ZK_VERSION__}`, fetch.bind(window));
     const prover = PROOF_SERVER_OVERRIDE || config.proverServerUri || 'http://localhost:6300';
     setProverUri(prover);
 

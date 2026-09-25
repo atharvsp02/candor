@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare const __ZK_VERSION__: string;
+
 interface ImportMetaEnv {
   readonly VITE_NETWORK_ID?: string;
   readonly VITE_CONTRACT_ADDRESS?: string;
