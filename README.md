@@ -258,6 +258,21 @@ requested again.
 That path can go back to `immutable`, correctly this time. The rule it violated: freeze a URL forever
 only when its name is derived from its contents.
 
+### Why a failed submission retries itself
+
+Proving happens in the browser, but the transaction is balanced and submitted by the wallet's prover.
+That service can fail the first request and succeed on the second, and on Preprod it reliably did: `issue`
+went through, while `enroll` and `vote` — the two circuits with five-megabyte proving keys — failed once
+each before working. The error arrived as `Unexpected error submitting scoped transaction: Request
+failed`, which reads like a contract fault and is nothing of the kind. A circuit that actually rejects
+throws `ContractRuntimeError` and names the circuit.
+
+So a submission-stage failure now retries once on its own, and the status line says the prover did not
+answer rather than showing the raw wrapper. The retry is safe because it re-sends the same proven
+transaction rather than rebuilding it: the blinding factor is drawn before the call, and if the first
+attempt had in fact landed, the contract's own guards — `already enrolled`, `already voted` — reject the
+duplicate. The failure was upstream; making the user click twice to work around it was ours.
+
 ### Why the issuer is a key, not an address
 
 The obvious way to gate `issue` is to check the caller's wallet address. That publishes who the

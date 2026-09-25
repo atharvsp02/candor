@@ -31,6 +31,8 @@ const NETWORK_ID = (import.meta.env.VITE_NETWORK_ID ?? 'preprod') as NetworkId;
 
 const PROOF_SERVER_OVERRIDE = import.meta.env.VITE_PROOF_SERVER_URI ?? '';
 
+const TRANSIENT_SUBMIT = /submitting scoped transaction|request failed|failed to fetch|network|timeout|504|502|503/i;
+
 const pollFromUrl = (): string =>
   new URLSearchParams(window.location.search).get('poll') ?? import.meta.env.VITE_CONTRACT_ADDRESS ?? '';
 
@@ -109,6 +111,7 @@ export const useMidnight = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [proverUri, setProverUri] = useState<string>(PROOF_SERVER_OVERRIDE);
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   const providers = useRef<any>(null);
   const contract = useRef<any>(null);
@@ -294,6 +297,21 @@ export const useMidnight = () => {
     setNotice(null);
   }, []);
 
+  const submit = useCallback(async <T,>(send: () => Promise<T>): Promise<T> => {
+    try {
+      return await send();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!TRANSIENT_SUBMIT.test(message)) throw error;
+      setRetrying(true);
+      try {
+        return await send();
+      } finally {
+        setRetrying(false);
+      }
+    }
+  }, []);
+
   const run = useCallback(
     async (label: string, action: () => Promise<unknown>) => {
       setBusy(label);
@@ -306,6 +324,7 @@ export const useMidnight = () => {
         setNotice(error instanceof Error ? error.message : String(error));
       } finally {
         setBusy(null);
+        setRetrying(false);
       }
     },
     [contractAddress, readChain],
@@ -343,21 +362,25 @@ export const useMidnight = () => {
           ? Uint8Array.from(holder.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16))
           : pureCircuits.commitment(secret.current!);
         const leaf = credentialLeafFor(issuedTo, { tier, blind });
-        await contract.current.callTx.issue(leaf);
+        await submit(() => contract.current.callTx.issue(leaf));
         if (!holder) {
           credential.current = { tier, blind };
           saveCredential(contractAddress, { tier, blind });
           await syncPrivateState();
         }
       }),
-    [contractAddress, run, syncPrivateState],
+    [contractAddress, run, submit, syncPrivateState],
   );
 
-  const enrol = useCallback(() => run('Enrolment', () => contract.current.callTx.enroll()), [run]);
+  const enrol = useCallback(
+    () => run('Enrolment', () => submit(() => contract.current.callTx.enroll())),
+    [run, submit],
+  );
 
   const vote = useCallback(
-    (option: number) => run(`Ballot for option ${option}`, () => contract.current.callTx.vote(BigInt(option))),
-    [run],
+    (option: number) =>
+      run(`Ballot for option ${option}`, () => submit(() => contract.current.callTx.vote(BigInt(option)))),
+    [run, submit],
   );
 
   return {
@@ -366,6 +389,7 @@ export const useMidnight = () => {
     privacy,
     eligibility,
     busy,
+    retrying,
     notice,
     contractAddress,
     proverUri,

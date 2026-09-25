@@ -36,6 +36,7 @@ export type DashboardProps = {
   privacy: PrivacyView | null;
   eligibility: Eligibility | null;
   busy: string | null;
+  retrying?: boolean;
   notice: string | null;
   contractAddress: string;
   networkId: string;
@@ -54,7 +55,7 @@ export type DashboardProps = {
 };
 
 export function Dashboard(props: DashboardProps) {
-  const { status, tally, privacy, eligibility, busy, notice, contractAddress, preview } = props;
+  const { status, tally, privacy, eligibility, busy, retrying, notice, contractAddress, preview } = props;
   const [choice, setChoice] = useState(0);
   const [view, setView] = useState<View>(() => (preview ? 'overview' : readView()));
   const { copied, copy } = useCopy();
@@ -76,6 +77,7 @@ export function Dashboard(props: DashboardProps) {
       connected={connected}
       hasPoll={hasPoll}
       busy={busy}
+      retrying={retrying === true}
       notice={notice}
       choice={choice}
       proverUri={props.proverUri}

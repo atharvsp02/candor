@@ -11,6 +11,7 @@ type Props = {
   connected: boolean;
   hasPoll: boolean;
   busy: string | null;
+  retrying: boolean;
   notice: string | null;
   choice: number;
   proverUri: string;
@@ -21,17 +22,24 @@ type Props = {
   onVote: (option: number) => void;
 };
 
-const PROVING: Record<string, string> = {
-  Enrolment: 'Proving your credential clears the threshold…',
-  'Poll creation': 'Deploying through your wallet. This takes a minute.',
-};
+const PROVING: readonly (readonly [string, string])[] = [
+  ['Credential', 'Proving you are authorised to issue credentials…'],
+  ['Enrolment', 'Proving your credential clears the threshold…'],
+  ['Poll creation', 'Deploying through your wallet. This takes a minute.'],
+  ['Ballot', 'Proving you are enrolled and have not voted yet…'],
+];
 
-function StatusLine({ busy, notice }: { busy: string | null; notice: string | null }) {
+const provingText = (busy: string) =>
+  PROVING.find(([prefix]) => busy.startsWith(prefix))?.[1] ?? 'Proving…';
+
+type StatusProps = { busy: string | null; retrying: boolean; notice: string | null };
+
+function StatusLine({ busy, retrying, notice }: StatusProps) {
   if (busy) {
     return (
       <p className="status status-busy" role="status">
         <span className="spinner" />
-        {PROVING[busy] ?? 'Proving you are enrolled and have not voted yet…'}
+        {retrying ? 'The wallet\u2019s prover did not answer. Trying once more…' : provingText(busy)}
       </p>
     );
   }
@@ -52,6 +60,7 @@ export function BallotPanel(props: Props) {
     connected,
     hasPoll,
     busy,
+    retrying,
     notice,
     choice,
     proverUri,
@@ -189,7 +198,7 @@ export function BallotPanel(props: Props) {
         </button>
       )}
 
-      <StatusLine busy={busy} notice={notice} />
+      <StatusLine busy={busy} retrying={retrying} notice={notice} />
 
       <dl className="facts">
         <div>

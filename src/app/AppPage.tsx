@@ -60,6 +60,7 @@ export default function AppPage() {
       privacy={privacy}
       eligibility={m.eligibility}
       busy={m.busy}
+      retrying={m.retrying}
       notice={m.notice}
       contractAddress={m.contractAddress}
       networkId={m.networkId}
