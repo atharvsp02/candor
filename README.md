@@ -9,9 +9,10 @@
 
 **Product proposal:** [Private Voting — anonymous ballots with publicly verifiable tallies](PROPOSAL.md)
 
-**Demo video:** [wallet connect, enrolment and a ballot on Preprod](https://drive.google.com/file/d/1nB7RrsJC5um1R07RGWUv-DnH1BbdcbnE/view?usp=sharing)
-(1:52) — connecting 1AM, enrolling a member, casting a ballot, and reading the commitment and spent
-nullifier back off the chain.
+**Demo video:** [the full gated flow on Preprod](https://drive.google.com/file/d/1nB7RrsJC5um1R07RGWUv-DnH1BbdcbnE/view?usp=sharing)
+(1:03) — connecting a wallet, issuing a credential, enrolling against the tier threshold, casting a
+ballot, and reading the commitment, nullifier and credential hash back off the chain. Proving waits are
+sped up, with the factor shown on screen.
 
 ![Candor](docs/interface-hero.jpg)
 
