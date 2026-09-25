@@ -232,6 +232,23 @@ Two preconditions are easy to miss, and both fail silently:
   proof server is mandatory, but its settings also offer a hosted prover that works. The app lets
   `VITE_PROOF_SERVER_URI` override whatever the wallet reports.
 
+### Why the proving keys are not cached forever
+
+The proving and verifying keys are served from the app's own origin, because the browser fetches them
+before it can prove. They are large — five megabytes for `enroll` — so the first version of `vercel.json`
+cached them with `max-age=31536000, immutable`.
+
+That was wrong, and it broke the live site the first time the circuits changed. Vite content-hashes its
+own bundles, so `assets/index-<hash>.js` is safe to freeze forever; `keys/enroll.verifier` has no hash in
+its path. Every browser that had loaded the previous build kept serving the old verifier key from cache
+and never revalidated, which paired old keys with a new contract and produced a `mismatched verifier
+keys` error that looked like a contract bug. The giveaway was that only `enroll` and `vote` were named:
+`issue` was a new file, so nothing had cached it.
+
+The fix is `max-age=0, must-revalidate`. Vercel already sends an `ETag` for these files, so an unchanged
+key costs one conditional request and a `304` rather than a five-megabyte download. Freeze a path
+forever only when its name changes with its contents.
+
 ### Why the issuer is a key, not an address
 
 The obvious way to gate `issue` is to check the caller's wallet address. That publishes who the
