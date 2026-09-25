@@ -19,7 +19,8 @@ nullifier back off the chain.
 
 | Network | Address | Deployed at | Notes |
 |---------|---------|-------------|-------|
-| **Preprod** | `815ed0190cbdb7889c490cff10a3f5451ac096d3b702c08ae1a71200db2c5f31` | block 2684775 | current — gated by an issued credential |
+| **Preprod** | `f776e706de0d0567427da906901e66832bdb6ac694b3472b361b86eb43c166ac` | block 2698910 | current — the poll the live demo and the video use |
+| Preprod | `815ed0190cbdb7889c490cff10a3f5451ac096d3b702c08ae1a71200db2c5f31` | block 2684775 | first gated poll |
 | Preprod | `ec565faac3103ff42017cebd3cc2510407b2068aa164ee54349ed7f0305e9e29` | block 2573777 | earlier build, open enrolment |
 | Preview | `b6b3a6862110bc33245c785e4658b58c5d964f3a662498bbba2e78034c6594fe` | block 861620 | first deployment |
 
@@ -28,10 +29,10 @@ Don't take my word for it — ask the public indexer:
 ```bash
 curl -s -X POST https://indexer.preprod.midnight.network/api/v4/graphql \
   -H 'Content-Type: application/json' \
-  -d '{"query":"{ contractAction(address: \"815ed0190cbdb7889c490cff10a3f5451ac096d3b702c08ae1a71200db2c5f31\") { __typename transaction { hash block { height } } } }"}'
+  -d '{"query":"{ contractAction(address: \"f776e706de0d0567427da906901e66832bdb6ac694b3472b361b86eb43c166ac\") { __typename transaction { hash block { height } } } }"}'
 ```
 
-It answers `ContractDeploy`. Both Preprod polls were deployed from the browser through a wallet — see
+It answers `ContractDeploy`. Every Preprod poll here was deployed from the browser through a wallet — see
 [Deploying through the wallet](#deploying-through-the-wallet).
 
 ## The problem
