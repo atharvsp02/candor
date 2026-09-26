@@ -7,7 +7,7 @@
 **Live demo:** [candor-self.vercel.app](https://candor-self.vercel.app) — the landing page explains it, and
 [`/app`](https://candor-self.vercel.app/app) opens the poll running on Midnight Preprod.
 
-**Product proposal:** [Private Voting — anonymous ballots with publicly verifiable tallies](PROPOSAL.md)
+**Product proposal:** [Private Voting — anonymous ballots with publicly verifiable tallies](PROPOSAL.md) · [idea submission](IDEA.md)
 
 **Demo video:** [the full gated flow on Preprod](https://drive.google.com/file/d/1nB7RrsJC5um1R07RGWUv-DnH1BbdcbnE/view?usp=sharing)
 (1:03) — connecting a wallet, issuing a credential, enrolling against the tier threshold, casting a

@@ -85,19 +85,29 @@ attempting exactly that attack.
 
 ## Who it is for
 
-**Beachhead: 50–500 person companies running quarterly engagement surveys.** They are large enough that
-respondents genuinely fear attribution and small enough that a single leaked comment is traceable by
-writing style. They already pay for a survey tool, so the budget line exists — the purchase is a switch,
-not a new category. Crucially, the buyer (People Ops) and the sceptic (the employee) are different people,
-and Candor is the rare product that can satisfy both without asking either to take the other's word.
+**Beachhead: campus — student bodies, clubs and course cohorts.** They run real elections and real
+feedback rounds, on a schedule, where everyone involved knows the organiser can read the responses and
+answers accordingly. A course evaluation written under the lecturer's gaze, a society election where the
+outgoing committee counts the votes, a hostel or committee motion nobody will oppose out loud: the stakes
+are genuine and the distrust is specific rather than theoretical.
+
+It is also the right first market for structural reasons, not just convenience. The groups are the size
+where an anonymity set of a few dozen actually protects someone. The organiser is a peer rather than a
+procurement department, so adoption is a conversation instead of a sales cycle. And the same person often
+runs several polls a term, which is what turns a demo into usage.
 
 **Second market: DAOs and token communities running signalling votes.** On-chain governance today is
 pseudonymous at best — wallet addresses are stable identifiers, so a whale's vote is visible, and smaller
 holders vote with the crowd rather than against it. An eligibility gate on stake tier plus an anonymous
 ballot is a direct fix, and this audience already understands why it matters.
 
-**Adjacent, later: course evaluations, post-incident retrospectives, board confidence votes, clinical and
-academic surveys.** Same shape, longer sales cycles.
+**Third market: 50–500 person companies running engagement surveys.** Large enough that respondents
+genuinely fear attribution, small enough that a single comment is traceable by writing style. They
+already pay for a survey tool, so the budget line exists and the purchase is a switch rather than a new
+category. The buyer (People Ops) and the sceptic (the employee) are different people, and Candor is the
+rare product that can satisfy both without asking either to take the other's word.
+
+All three are the same contract with a different threshold. None is a separate product.
 
 ## Why Midnight
 
@@ -127,8 +137,8 @@ Built and running on Preprod today:
 | Level | Deliverable | Definition of done |
 |---|---|---|
 | **4 — MVP live** | Poll creation as a first-class flow: name the question, write the options, set the threshold, invite by link. Issuance moves from a developer affordance to an organiser screen. | A non-technical organiser runs a real poll start to finish without reading the README. |
-| **5 — Users & feedback** | 50 Preprod respondents across at least three real polls, plus an in-app feedback loop and written documentation. | Feedback is collected through Candor itself, which is the strongest possible demonstration. |
-| **6 — Mainnet** | Mainnet deployment, brand assets, 20 onboarded real users. | A poll someone outside the program depends on the result of. |
+| **5 — Users & feedback** | 50 Preprod respondents across at least three real campus polls — course feedback, a society election, a committee motion — plus an in-app feedback loop and written documentation. | Feedback is collected through Candor itself, which is the strongest possible demonstration. |
+| **6 — Mainnet** | Mainnet deployment, brand assets, 20 onboarded real users. | A poll whose result somebody acts on — an election that decides who holds a post, not a demonstration. |
 
 Deliberately out of scope for now: ranked-choice and weighted ballots, results embargoed until a closing
 time, credential revocation, and organisation-level accounts. Each is a real requirement for a paid
