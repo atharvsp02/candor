@@ -13,17 +13,18 @@ import { Contract, ledger, pureCircuits, type Ledger } from '../../managed/cando
 import {
   browserPrivateStateProvider,
   createIssuerSecret,
+  credentialLink,
   loadCredential,
   loadIssuerSecret,
   loadOrCreateSecret,
   saveCredential,
   saveIssuerSecret,
+  takeCredentialFromUrl,
   type StoredCredential,
 } from '../browser-private-state';
 
 const COMPATIBLE_WALLET_API = '4.x';
 const PRIVATE_STATE_ID = 'candorPrivateState';
-const OPTION_COUNT = 3n;
 const DEFAULT_THRESHOLD = 1n;
 const DEFAULT_TIER = 2;
 
@@ -124,6 +125,12 @@ export const useMidnight = () => {
   const [proverUri, setProverUri] = useState<string>(PROOF_SERVER_OVERRIDE);
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [issuedLink, setIssuedLink] = useState<string | null>(null);
+
+  useEffect(() => {
+    const received = takeCredentialFromUrl(contractAddress);
+    if (received) credential.current = received;
+  }, [contractAddress]);
 
   const providers = useRef<any>(null);
   const contract = useRef<any>(null);
@@ -380,8 +387,11 @@ export const useMidnight = () => {
           ? Uint8Array.from(holder.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16))
           : pureCircuits.commitment(secret.current!);
         const leaf = credentialLeafFor(issuedTo, { tier, blind });
+        setIssuedLink(null);
         await submit(() => contract.current.callTx.issue(leaf));
-        if (!holder) {
+        if (holder) {
+          setIssuedLink(credentialLink(contractAddress, { tier, blind }));
+        } else {
           credential.current = { tier, blind };
           saveCredential(contractAddress, { tier, blind });
           await syncPrivateState();
@@ -408,6 +418,7 @@ export const useMidnight = () => {
     eligibility,
     busy,
     retrying,
+    issuedLink,
     notice,
     contractAddress,
     proverUri,

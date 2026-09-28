@@ -103,3 +103,20 @@ export const browserPrivateStateProvider = <PSI extends PrivateStateId, PS = unk
     importSigningKeys: unsupported('Importing signing keys') as unknown as () => Promise<ImportSigningKeysResult>,
   };
 };
+
+const hex = (bytes: Uint8Array): string => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+
+export const credentialLink = (poll: string, credential: StoredCredential): string =>
+  `${window.location.origin}/app?poll=${poll}#cred=${credential.tier}.${hex(credential.blind)}`;
+
+export const takeCredentialFromUrl = (poll: string): StoredCredential | undefined => {
+  const match = window.location.hash.match(/^#cred=(\d)\.([0-9a-f]{64})$/i);
+  if (!match || !poll) return undefined;
+  const credential = {
+    tier: Number(match[1]),
+    blind: Uint8Array.from(match[2].match(/../g)!, (pair) => Number.parseInt(pair, 16)),
+  };
+  saveCredential(poll, credential);
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#ballot`);
+  return credential;
+};

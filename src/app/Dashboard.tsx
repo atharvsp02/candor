@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { Overview } from './Overview';
 import { TallyCard, EmptyPoll } from './TallyCard';
+import { MembersCard } from './MembersCard';
 import { BallotPanel } from './BallotPanel';
 import { PrivacyCard } from './PrivacyCard';
 import { DetailsCard } from './DetailsCard';
@@ -13,7 +14,7 @@ import { PrivacyModel } from './PrivacyModel';
 import { ContractCard } from './ContractCard';
 import { useCopy } from './useCopy';
 
-export const VIEWS = ['overview', 'ballot', 'privacy', 'details'] as const;
+export const VIEWS = ['overview', 'ballot', 'members', 'privacy', 'details'] as const;
 
 export type View = (typeof VIEWS)[number];
 
@@ -37,6 +38,7 @@ export type DashboardProps = {
   eligibility: Eligibility | null;
   busy: string | null;
   retrying?: boolean;
+  issuedLink?: string | null;
   notice: string | null;
   contractAddress: string;
   networkId: string;
@@ -49,6 +51,7 @@ export type DashboardProps = {
   onDisconnect: () => void;
   onCreatePoll: (draft: PollDraft) => void;
   onIssue: () => void;
+  onIssueTo?: (holder: string, tier: number) => void;
   onEnrol: () => void;
   onVote: (option: number) => void;
   onRefresh: () => void;
@@ -174,6 +177,18 @@ export function Dashboard(props: DashboardProps) {
                 {results}
                 {ballot}
               </div>
+            )}
+
+            {view === 'members' && (
+              <MembersCard
+                privacy={privacy}
+                eligibility={eligibility}
+                connected={connected}
+                busy={busy}
+                issuedLink={props.issuedLink ?? null}
+                onIssueTo={props.onIssueTo ?? (() => undefined)}
+                onConnect={props.onConnect}
+              />
             )}
 
             {view === 'privacy' && (

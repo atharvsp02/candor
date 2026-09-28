@@ -61,6 +61,8 @@ export default function AppPage() {
       eligibility={m.eligibility}
       busy={m.busy}
       retrying={m.retrying}
+      issuedLink={m.issuedLink}
+      onIssueTo={(holder, tier) => m.issueCredential(tier, holder)}
       notice={m.notice}
       contractAddress={m.contractAddress}
       networkId={m.networkId}

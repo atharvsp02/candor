@@ -1,5 +1,5 @@
 import { Brand } from '../ui/Brand';
-import { Ballot, Book, ChevronRight, Code, Grid, Home, Layers, Plus, Shield } from '../ui/icons';
+import { Ballot, Book, ChevronRight, Code, Grid, Home, Layers, Plus, Shield, Users } from '../ui/icons';
 import { CONTRACT_SOURCE_URL, REPO_URL } from '../ui/format';
 
 import type { View } from './Dashboard';
@@ -7,6 +7,7 @@ import type { View } from './Dashboard';
 const SECTIONS: { view: View; label: string; icon: typeof Grid }[] = [
   { view: 'overview', label: 'Overview', icon: Grid },
   { view: 'ballot', label: 'Ballot', icon: Ballot },
+  { view: 'members', label: 'Members', icon: Users },
   { view: 'privacy', label: 'Privacy', icon: Shield },
   { view: 'details', label: 'Poll details', icon: Layers },
 ];
