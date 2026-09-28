@@ -1220,3 +1220,129 @@
     margin-left: 34px;
   }
 }
+
+.tally-question {
+  padding: 0 18px 14px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.empty-panel-form {
+  width: min(560px, 100%);
+  justify-items: stretch;
+}
+
+.poll-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 4px;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.field-label {
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field-input {
+  width: 100%;
+  padding: 9px 11px;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  transition: border-color 0.15s var(--ease);
+}
+
+.field-input::placeholder {
+  color: var(--dim);
+}
+
+.field-input:focus-visible {
+  outline: none;
+  border-color: var(--raise-hover);
+  background: var(--raise);
+}
+
+.field-hint {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--dim);
+}
+
+.option-rows {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 9px;
+}
+
+.poll-form .field > .btn-sm {
+  justify-self: start;
+}
+
+.option-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.option-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dim);
+}
+
+.option-dot[data-index='0'] { background: #d95926; }
+.option-dot[data-index='1'] { background: #3987e5; }
+.option-dot[data-index='2'] { background: #199e70; }
+.option-dot[data-index='3'] { background: #c98500; }
+.option-dot[data-index='4'] { background: #d55181; }
+.option-dot[data-index='5'] { background: #008300; }
+.option-dot[data-index='6'] { background: #9085e9; }
+.option-dot[data-index='7'] { background: #e66767; }
+
+.tier-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.tier-slider {
+  width: 100%;
+  accent-color: #d95926;
+}
+
+.poll-form-actions {
+  display: flex;
+  gap: 9px;
+  margin-top: 2px;
+}
+
+@media (max-width: 560px) {
+  .poll-form-actions {
+    flex-direction: column;
+  }
+}
+
+.poll-form legend {
+  padding-inline: 0;
+  margin-inline: 0;
+}

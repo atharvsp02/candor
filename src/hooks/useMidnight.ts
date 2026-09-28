@@ -31,6 +31,12 @@ const NETWORK_ID = (import.meta.env.VITE_NETWORK_ID ?? 'preprod') as NetworkId;
 
 const PROOF_SERVER_OVERRIDE = import.meta.env.VITE_PROOF_SERVER_URI ?? '';
 
+export type PollDraft = {
+  readonly question?: string;
+  readonly labels?: readonly string[];
+  readonly threshold?: bigint;
+};
+
 const TRANSIENT_SUBMIT = /submitting scoped transaction|request failed|failed to fetch|network|timeout|504|502|503/i;
 
 const pollFromUrl = (): string =>
@@ -43,6 +49,8 @@ const putPollInUrl = (address: string): void => {
 };
 
 export type Tally = {
+  readonly question: string;
+  readonly labels: readonly string[];
   readonly enrolled: bigint;
   readonly cast: bigint;
   readonly counts: readonly bigint[];
@@ -93,6 +101,10 @@ const findWallet = (): { api: InitialAPI; name: string } | undefined => {
 };
 
 const readTally = (state: Ledger): Tally => ({
+  question: String(state.question ?? ''),
+  labels: Array.from({ length: Number(state.choices) }, (_, i) =>
+    state.options.member(BigInt(i)) ? String(state.options.lookup(BigInt(i))) : `Option ${i + 1}`,
+  ),
   enrolled: state.enrolled,
   cast: state.cast,
   spent: state.spent.size(),
@@ -331,14 +343,20 @@ export const useMidnight = () => {
   );
 
   const createPoll = useCallback(
-    (threshold: bigint = DEFAULT_THRESHOLD) =>
+    (draft: PollDraft = {}) =>
       run('Poll creation', async () => {
+        const question = (draft.question ?? '').trim() || 'Untitled poll';
+        const labels = (draft.labels ?? ['Yes', 'No', 'Abstain']).map((l) => l.trim()).filter(Boolean);
+        if (labels.length < 2) throw new Error('A poll needs at least two options.');
+        if (labels.length > 8) throw new Error('A poll supports at most eight options.');
+        const threshold = draft.threshold ?? DEFAULT_THRESHOLD;
+        const padded = Array.from({ length: 8 }, (_, i) => labels[i] ?? `Option ${i + 1}`);
         const key = createIssuerSecret();
         issuerSecret.current = key;
         credential.current = undefined;
         const deployedContract = await deployContract(providers.current, {
           compiledContract: compiled(),
-          args: [OPTION_COUNT, threshold, pureCircuits.issuerKeyOf(key)],
+          args: [question, padded, BigInt(labels.length), threshold, pureCircuits.issuerKeyOf(key)],
           privateStateId: PRIVATE_STATE_ID,
           initialPrivateState: privateState(),
         } as any);

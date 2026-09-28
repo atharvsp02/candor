@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Status } from '../hooks/useMidnight';
+import type { PollDraft, Status } from '../hooks/useMidnight';
 import type { Eligibility } from '../hooks/useMidnight';
 import type { PrivacyView, TallyView } from '../view';
 import { Sidebar } from './Sidebar';
@@ -47,7 +47,7 @@ export type DashboardProps = {
   preview?: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
-  onCreatePoll: () => void;
+  onCreatePoll: (draft: PollDraft) => void;
   onIssue: () => void;
   onEnrol: () => void;
   onVote: (option: number) => void;
@@ -56,6 +56,9 @@ export type DashboardProps = {
 
 export function Dashboard(props: DashboardProps) {
   const { status, tally, privacy, eligibility, busy, retrying, notice, contractAddress, preview } = props;
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => setCreating(false), [contractAddress]);
   const [choice, setChoice] = useState(0);
   const [view, setView] = useState<View>(() => (preview ? 'overview' : readView()));
   const { copied, copy } = useCopy();
@@ -89,11 +92,19 @@ export function Dashboard(props: DashboardProps) {
     />
   );
 
-  const results = hasPoll ? (
-    <TallyCard tally={tally} choice={choice} onChoose={setChoice} onRefresh={props.onRefresh} />
-  ) : (
-    <EmptyPoll connected={connected} busy={busy} onConnect={props.onConnect} onCreatePoll={props.onCreatePoll} />
-  );
+  const results =
+    hasPoll && !creating ? (
+      <TallyCard tally={tally} choice={choice} onChoose={setChoice} onRefresh={props.onRefresh} />
+    ) : (
+      <EmptyPoll
+        connected={connected}
+        busy={busy}
+        startOpen={creating}
+        onConnect={props.onConnect}
+        onCreatePoll={props.onCreatePoll}
+        onCancel={() => setCreating(false)}
+      />
+    );
 
   const privacyCard = <PrivacyCard privacy={privacy} tally={tally} eligibility={eligibility} connected={connected} />;
 
@@ -113,7 +124,7 @@ export function Dashboard(props: DashboardProps) {
   return (
     <div className={preview ? 'dash is-preview' : 'dash'}>
       <div className="dash-shell">
-        <Sidebar view={view} connected={connected} busy={busy} onCreatePoll={props.onCreatePoll} />
+        <Sidebar view={view} connected={connected} busy={busy} onNewPoll={() => setCreating(true)} />
 
         <div className="dash-main">
           <Topbar

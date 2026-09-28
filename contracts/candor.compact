@@ -14,6 +14,8 @@ import CompactStandardLibrary;
 //   spent       - nullifiers that have already been used
 //   tally       - vote count per option
 //   choices     - number of options in this poll
+//   question    - the question being asked, so a shared link explains itself
+//   options     - the label of each option, by index
 //   enrolled    - number of members admitted
 //   cast        - number of ballots accepted
 //
@@ -41,19 +43,29 @@ export ledger members: Set<Bytes<32>>;
 export ledger spent: Set<Bytes<32>>;
 export ledger tally: Map<Uint<8>, Counter>;
 export ledger choices: Uint<8>;
+export ledger question: Opaque<"string">;
+export ledger options: Map<Uint<8>, Opaque<"string">>;
 export ledger enrolled: Counter;
 export ledger cast: Counter;
 
-constructor(optionCount: Uint<8>, threshold: Uint<8>, issuerKey: Bytes<32>) {
+constructor(
+  title: Opaque<"string">,
+  labels: Vector<8, Opaque<"string">>,
+  optionCount: Uint<8>,
+  threshold: Uint<8>,
+  issuerKey: Bytes<32>,
+) {
   const count = disclose(optionCount);
   assert(count >= 2, "a poll needs at least two options");
   assert(count <= 8, "a poll supports at most eight options");
   choices = count;
+  question = disclose(title);
   minTier = disclose(threshold);
   issuer = disclose(issuerKey);
   for (const i of 0 .. 8) {
     if ((i as Uint<8>) < count) {
       tally.insert(i as Uint<8>, default<Counter>);
+      options.insert(i as Uint<8>, disclose(labels[i]));
     }
   }
 }

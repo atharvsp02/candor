@@ -16,6 +16,9 @@ import {
 
 const COIN_PUBLIC_KEY = '0'.repeat(64);
 
+const labelsOf = (names: string[]): string[] =>
+  Array.from({ length: 8 }, (_, i) => names[i] ?? `Option ${i + 1}`);
+
 class Poll {
   private readonly contract = new Contract(witnesses);
   private readonly address = sampleContractAddress();
@@ -26,6 +29,8 @@ class Poll {
     this.issuer = issuer;
     const { currentContractState } = this.contract.initialState(
       createConstructorContext(issuer, COIN_PUBLIC_KEY),
+      'Should we ship on Friday?',
+      labelsOf(['Yes', 'No', 'Abstain']),
       BigInt(optionCount),
       BigInt(threshold),
       issuerKeyOf(issuer.issuerSecret!),
@@ -107,6 +112,25 @@ describe('circuit logic', () => {
 
     expect(() => poll.vote(alice, 2)).toThrow(/not on the ballot/);
     expect(poll.ledger.cast).toBe(0n);
+  });
+});
+
+describe('the poll itself', () => {
+  it('publishes the question and the labels it was created with', () => {
+    const poll = new Poll(3);
+    const l = poll.ledger;
+
+    expect(l.question).toBe('Should we ship on Friday?');
+    expect(l.options.lookup(0n)).toBe('Yes');
+    expect(l.options.lookup(1n)).toBe('No');
+    expect(l.options.lookup(2n)).toBe('Abstain');
+  });
+
+  it('labels only the options the poll actually has', () => {
+    const poll = new Poll(2);
+
+    expect(poll.ledger.choices).toBe(2n);
+    expect(poll.ledger.options.member(2n)).toBe(false);
   });
 });
 

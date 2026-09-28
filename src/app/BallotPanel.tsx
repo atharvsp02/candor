@@ -71,6 +71,7 @@ export function BallotPanel(props: Props) {
     onVote,
   } = props;
   const counts = tally?.counts ?? [0, 0, 0];
+  const labels = tally?.labels;
   const enrolled = privacy?.enrolled === true;
   const voted = privacy?.voted === true;
   const idle = busy === null;
@@ -86,7 +87,7 @@ export function BallotPanel(props: Props) {
     : voted
       ? 'Ballot counted'
       : enrolled
-        ? `Prove and vote ${optionLabel(choice)}`
+        ? `Prove and vote ${optionLabel(choice, labels)}`
         : issuedToMe
           ? 'Enrol before voting'
           : 'A credential is needed first';
@@ -179,7 +180,7 @@ export function BallotPanel(props: Props) {
               disabled={voted}
             >
               <i />
-              {optionLabel(index)}
+              {optionLabel(index, labels)}
               {index === choice && <Check size={13} />}
             </button>
           ))}

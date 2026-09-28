@@ -1,6 +1,8 @@
 import type { PrivacyFacts, Tally } from './hooks/useMidnight';
 
 export type TallyView = {
+  readonly question: string;
+  readonly labels: readonly string[];
   readonly enrolled: number;
   readonly cast: number;
   readonly spent: number;
@@ -13,6 +15,8 @@ export type PrivacyView = Omit<PrivacyFacts, 'anonymitySet'> & {
 
 export const tallyView = (tally: Tally | null): TallyView | null =>
   tally && {
+    question: tally.question,
+    labels: tally.labels,
     enrolled: Number(tally.enrolled),
     cast: Number(tally.cast),
     spent: Number(tally.spent),

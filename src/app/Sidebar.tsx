@@ -21,10 +21,10 @@ type Props = {
   view: View;
   connected: boolean;
   busy: string | null;
-  onCreatePoll: () => void;
+  onNewPoll: () => void;
 };
 
-export function Sidebar({ view, connected, busy, onCreatePoll }: Props) {
+export function Sidebar({ view, connected, busy, onNewPoll }: Props) {
   return (
     <aside className="dash-side">
       <div className="side-brand">
@@ -67,7 +67,7 @@ export function Sidebar({ view, connected, busy, onCreatePoll }: Props) {
       <div className="side-card">
         <strong>Start a new poll</strong>
         <p>Deploys a fresh ballot contract through your wallet.</p>
-        <button className="btn btn-dark btn-sm btn-block" onClick={onCreatePoll} disabled={!connected || busy !== null}>
+        <button className="btn btn-dark btn-sm btn-block" onClick={onNewPoll} disabled={!connected || busy !== null}>
           <Plus size={14} />
           {busy === 'Poll creation' ? 'Deploying…' : 'New poll'}
         </button>

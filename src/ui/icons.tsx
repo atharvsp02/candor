@@ -57,6 +57,12 @@ export const Plus = (props: IconProps) => (
   </Icon>
 );
 
+export const Trash = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3" />
+  </Icon>
+);
+
 export const Menu = (props: IconProps) => (
   <Icon {...props}>
     <path d="M4 7h16M4 12h16M4 17h16" />

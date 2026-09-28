@@ -90,6 +90,14 @@ export type Ledger = {
     lookup(key_0: bigint): { read(): bigint }
   };
   readonly choices: bigint;
+  readonly question: string;
+  options: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: bigint): boolean;
+    lookup(key_0: bigint): string;
+    [Symbol.iterator](): Iterator<[bigint, string]>
+  };
   readonly enrolled: bigint;
   readonly cast: bigint;
 }
@@ -105,6 +113,8 @@ export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>>
   provableCircuits: ProvableCircuits<PS>;
   constructor(witnesses: W);
   initialState(context: __compactRuntime.ConstructorContext<PS>,
+               title_0: string,
+               labels_0: string[],
                optionCount_0: bigint,
                threshold_0: bigint,
                issuerKey_0: Uint8Array): __compactRuntime.ConstructorResult<PS>;

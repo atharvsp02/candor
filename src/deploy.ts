@@ -30,6 +30,9 @@ const PRIVATE_STATE_ID = 'candorPrivateState';
 // Options on the ballot. Set CANDOR_OPTIONS at deploy time to change it.
 const OPTION_COUNT = BigInt(process.env.CANDOR_OPTIONS?.trim() || '3');
 const MIN_TIER = BigInt(process.env.CANDOR_MIN_TIER?.trim() || '1');
+const QUESTION = process.env.CANDOR_QUESTION?.trim() || 'Should we ship on Friday?';
+const LABELS = (process.env.CANDOR_LABELS?.trim() || 'Yes,No,Abstain').split(',').map((l) => l.trim());
+const PADDED_LABELS = Array.from({ length: 8 }, (_, i) => LABELS[i] ?? `Option ${i + 1}`);
 
 // Upper bound on the DUST wait. A healthy local devnet produces DUST within
 // seconds of registration; anything approaching this means the node, the
@@ -321,13 +324,14 @@ async function main() {
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      // args is the contract constructor's arguments — the number of options on
-      // the ballot, the tier a credential must reach, and the hash of the issuer
-      // key. initialPrivateState seeds the secrets the witnesses read from; the
-      // issuer key itself never leaves this machine.
+      // args is the contract constructor's arguments — the question, the eight
+      // label slots, the number of options on the ballot, the tier a credential
+      // must reach, and the hash of the issuer key. initialPrivateState seeds
+      // the secrets the witnesses read from; the issuer key never leaves this
+      // machine.
       deployed = await deployContract(providers, {
         compiledContract: compiledContract as any,
-        args: [OPTION_COUNT, MIN_TIER, issuerKeyOf(issuerState.issuerSecret!)],
+        args: [QUESTION, PADDED_LABELS, OPTION_COUNT, MIN_TIER, issuerKeyOf(issuerState.issuerSecret!)],
         privateStateId: PRIVATE_STATE_ID,
         initialPrivateState: issuerState,
       });

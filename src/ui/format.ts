@@ -4,7 +4,8 @@ export const ROSTER_CAPACITY = 1024;
 export const OPTION_LABELS = ['Yes', 'No', 'Abstain'];
 export const OPTION_COLORS = ['#d95926', '#3987e5', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
 
-export const optionLabel = (index: number) => OPTION_LABELS[index] ?? `Option ${index + 1}`;
+export const optionLabel = (index: number, labels?: readonly string[]) =>
+  labels?.[index] ?? OPTION_LABELS[index] ?? `Option ${index + 1}`;
 
 export const middle = (value: string, head = 6, tail = 4) =>
   value.length > head + tail + 1 ? `${value.slice(0, head)}…${value.slice(-tail)}` : value;

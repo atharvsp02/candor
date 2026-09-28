@@ -70,7 +70,7 @@ export default function AppPage() {
       activityFailed={live.historyFailed}
       onConnect={m.connect}
       onDisconnect={m.disconnect}
-      onCreatePoll={() => m.createPoll()}
+      onCreatePoll={m.createPoll}
       onIssue={() => m.issueCredential()}
       onEnrol={m.enrol}
       onVote={m.vote}
