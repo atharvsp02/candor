@@ -7,6 +7,8 @@
 **Live demo:** [candor-self.vercel.app](https://candor-self.vercel.app) — the landing page explains it, and
 [`/app`](https://candor-self.vercel.app/app) opens the poll running on Midnight Preprod.
 
+**Guide:** [running a poll, and voting in one](docs/GUIDE.md) — no cryptography required
+
 **Product proposal:** [Private Voting — anonymous ballots with publicly verifiable tallies](PROPOSAL.md) · [idea submission](IDEA.md)
 
 **Demo video:** [the full gated flow on Preprod](https://drive.google.com/file/d/1nB7RrsJC5um1R07RGWUv-DnH1BbdcbnE/view?usp=sharing)
@@ -159,6 +161,23 @@ revealing which leaf is theirs.
 
 The blinding factor is what makes the tier private. Tiers are small numbers, so a hash of
 `(holder, tier)` alone could be brute-forced by trying every tier; `(holder, tier, blind)` cannot.
+
+### How a credential reaches its holder
+
+The organiser needs a member's commitment to issue them a credential, and the member needs the tier and
+blinding factor back to use it. The commitment goes out first: it is the value that enters the roster at
+enrolment anyway, so sending it to the organiser reveals nothing that enrolling would not.
+
+The tier and blinding factor come back in the fragment of a link —
+`/app?poll=<address>#cred=<tier>.<blind>`. Browsers never send a fragment to a server, so it does not
+reach Vercel, the indexer, or any log. Opening the link stores the credential for that poll and clears it
+from the address bar.
+
+That link is the one place a member's tier leaves the chain's protection, so it is worth being exact about
+what leaking it costs. Someone holding it learns that member's tier. They do not learn the member's
+ballot, and they cannot use the credential: it is bound to the commitment it was issued for, and the
+contract refuses it from anyone else — the test suite checks exactly that. The organiser already knows
+the tier, having chosen it.
 
 ## Privacy Claim
 
@@ -373,8 +392,9 @@ npm run compile
 npm test
 ```
 
-Seventeen tests in four groups:
+Nineteen tests in five groups:
 
+- **the poll itself** — the question and option labels are published exactly as written, and only the options the poll has get a label
 - **circuit logic** — a poll needs at least two options, enrolling stores the commitment it returns, a member is admitted only once, a ballot off the end of the list is refused
 - **eligibility gate** — a credential at the threshold gets in; one below it, one issued to somebody else, a tier the holder awarded themselves, and a member with no credential at all are all turned away; only the issuer this poll was created with can hand out credentials
 - **state transitions** — the tally moves only for the option chosen, one nullifier is spent per ballot, an unenrolled secret is turned away
@@ -476,6 +496,7 @@ Preprod's chain is roughly three times longer than Preview's, so budget accordin
 
 ```
 contracts/candor.compact          the contract
+docs/GUIDE.md                     how to run a poll and how to vote in one
 managed/candor/                   compiled circuits, proving and verifying keys
 tests/candor.test.ts              the test suite
 
@@ -486,6 +507,8 @@ src/live/                         reads the poll off the indexer without loading
 src/app/AppPage.tsx               binds the wallet hook to the dashboard and logs session activity
 src/app/Dashboard.tsx             the poll dashboard, shared by /app and the landing preview
 src/app/BallotPanel.tsx           credential, enrolment and ballot, in that order
+src/app/NewPollForm.tsx           write the question and options, set the threshold, deploy
+src/app/MembersCard.tsx           a member's code, and the organiser's credential issuing
 src/app/TallyCard.tsx             live tally chart, or deploying a new poll when none is open
 src/app/PrivacyCard.tsx           what the chain holds about you, read back from it
 src/styles/                       design tokens, landing and dashboard styles
