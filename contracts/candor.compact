@@ -43,10 +43,10 @@ export ledger members: Set<Bytes<32>>;
 export ledger spent: Set<Bytes<32>>;
 export ledger tally: Map<Uint<8>, Counter>;
 export ledger choices: Uint<8>;
-export ledger question: Opaque<"string">;
-export ledger options: Map<Uint<8>, Opaque<"string">>;
 export ledger enrolled: Counter;
 export ledger cast: Counter;
+export ledger question: Opaque<"string">;
+export ledger options: Map<Uint<8>, Opaque<"string">>;
 
 constructor(
   title: Opaque<"string">,

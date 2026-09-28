@@ -22,6 +22,7 @@ import {
   takeCredentialFromUrl,
   type StoredCredential,
 } from '../browser-private-state';
+import { labelsOf, questionOf } from '../pollText';
 
 const COMPATIBLE_WALLET_API = '4.x';
 const PRIVATE_STATE_ID = 'candorPrivateState';
@@ -102,10 +103,8 @@ const findWallet = (): { api: InitialAPI; name: string } | undefined => {
 };
 
 const readTally = (state: Ledger): Tally => ({
-  question: String(state.question ?? ''),
-  labels: Array.from({ length: Number(state.choices) }, (_, i) =>
-    state.options.member(BigInt(i)) ? String(state.options.lookup(BigInt(i))) : `Option ${i + 1}`,
-  ),
+  question: questionOf(state),
+  labels: labelsOf(state),
   enrolled: state.enrolled,
   cast: state.cast,
   spent: state.spent.size(),

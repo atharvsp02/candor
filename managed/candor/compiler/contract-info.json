@@ -376,8 +376,20 @@
       }
     },
     {
-      "name": "question",
+      "name": "enrolled",
       "index": 9,
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "cast",
+      "index": 10,
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "question",
+      "index": 11,
       "exported": true,
       "storage": "Cell",
       "type": {
@@ -387,7 +399,7 @@
     },
     {
       "name": "options",
-      "index": 10,
+      "index": 12,
       "exported": true,
       "storage": "Map",
       "key": {
@@ -398,18 +410,6 @@
         "type-name": "Opaque",
         "tsType": "string"
       }
-    },
-    {
-      "name": "enrolled",
-      "index": 11,
-      "exported": true,
-      "storage": "Counter"
-    },
-    {
-      "name": "cast",
-      "index": 12,
-      "exported": true,
-      "storage": "Counter"
     }
   ]
 }

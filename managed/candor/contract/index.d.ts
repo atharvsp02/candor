@@ -90,6 +90,8 @@ export type Ledger = {
     lookup(key_0: bigint): { read(): bigint }
   };
   readonly choices: bigint;
+  readonly enrolled: bigint;
+  readonly cast: bigint;
   readonly question: string;
   options: {
     isEmpty(): boolean;
@@ -98,8 +100,6 @@ export type Ledger = {
     lookup(key_0: bigint): string;
     [Symbol.iterator](): Iterator<[bigint, string]>
   };
-  readonly enrolled: bigint;
-  readonly cast: bigint;
 }
 
 export type ContractReferenceLocations = any;

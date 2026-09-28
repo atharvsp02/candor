@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { createCircuitContext, createConstructorContext, sampleContractAddress } from '@midnight-ntwrk/compact-runtime';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import {
+  ContractState,
+  createCircuitContext,
+  createConstructorContext,
+  sampleContractAddress,
+} from '@midnight-ntwrk/compact-runtime';
+import { labelsOf, questionOf } from '../src/pollText.js';
 import { Contract, ledger, pureCircuits } from '../managed/candor/contract/index.js';
 import {
   commitmentOf,
@@ -16,7 +24,7 @@ import {
 
 const COIN_PUBLIC_KEY = '0'.repeat(64);
 
-const labelsOf = (names: string[]): string[] =>
+const padLabels = (names: string[]): string[] =>
   Array.from({ length: 8 }, (_, i) => names[i] ?? `Option ${i + 1}`);
 
 class Poll {
@@ -30,7 +38,7 @@ class Poll {
     const { currentContractState } = this.contract.initialState(
       createConstructorContext(issuer, COIN_PUBLIC_KEY),
       'Should we ship on Friday?',
-      labelsOf(['Yes', 'No', 'Abstain']),
+      padLabels(['Yes', 'No', 'Abstain']),
       BigInt(optionCount),
       BigInt(threshold),
       issuerKeyOf(issuer.issuerSecret!),
@@ -291,5 +299,31 @@ describe('privacy', () => {
     expect(guesses).not.toContain(published);
     expect(published).not.toContain(bytes(credential.blind));
     expect(bytes(credentialLeafFor(holder, { ...credential, tier: 6n }))).not.toBe(published);
+  });
+});
+
+describe('compatibility with polls already deployed', () => {
+  const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8'));
+
+  it('reads a poll deployed before questions and labels existed', () => {
+    const v1 = fixture('poll-v1.json');
+    const state = ledger(ContractState.deserialize(Buffer.from(v1.state, 'hex')).data);
+
+    expect(state.choices).toBe(3n);
+    expect(state.enrolled).toBe(1n);
+    expect(state.cast).toBe(1n);
+    expect(questionOf(state)).toBe('');
+    expect(labelsOf(state)).toEqual(['Yes', 'No', 'Abstain']);
+  });
+
+  it('keeps the circuits that every deployed poll was verified against', () => {
+    const deployed = fixture('verifier-keys.json') as Record<string, string>;
+
+    for (const [circuit, hash] of Object.entries(deployed)) {
+      const compiled = createHash('sha256')
+        .update(readFileSync(new URL(`../managed/candor/keys/${circuit}.verifier`, import.meta.url)))
+        .digest('hex');
+      expect(compiled, `${circuit} changed: every existing poll would reject it`).toBe(hash);
+    }
   });
 });
